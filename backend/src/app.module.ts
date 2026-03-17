@@ -20,7 +20,16 @@ import { HederaConfigService } from './hedera/hedera-config.service';
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
     TypeOrmModule.forRoot(
-      process.env.DB_TYPE === 'postgres'
+      process.env.DATABASE_URL
+        ? {
+            // Neon / any PostgreSQL connection string (production)
+            type: 'postgres',
+            url: process.env.DATABASE_URL,
+            ssl: { rejectUnauthorized: false },
+            autoLoadEntities: true,
+            synchronize: true,
+          }
+        : process.env.DB_TYPE === 'postgres'
         ? {
             type: 'postgres',
             host: process.env.DB_HOST || 'localhost',
@@ -66,6 +75,22 @@ export class AppModule implements OnModuleInit {
     if (!this.hederaConfig.isConfigured()) {
       this.logger.warn('Hedera is NOT configured — HCS logging disabled.');
       return;
+    }
+
+    // Seed topic IDs from env vars (used in production so Render doesn't recreate topics on every boot)
+    const envTopics = {
+      identity: process.env.HCS_TOPIC_IDENTITY,
+      feedback: process.env.HCS_TOPIC_FEEDBACK,
+      validation: process.env.HCS_TOPIC_VALIDATION,
+    };
+    if (envTopics.identity || envTopics.feedback || envTopics.validation) {
+      const existing = await this.systemConfig.getHCSTopics();
+      const merged = {
+        identity: existing.identity || envTopics.identity || '',
+        feedback: existing.feedback || envTopics.feedback || '',
+        validation: existing.validation || envTopics.validation || '',
+      };
+      await this.systemConfig.setHCSTopics(merged);
     }
 
     const topics = await this.systemConfig.getHCSTopics();

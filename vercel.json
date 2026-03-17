@@ -1,0 +1,8 @@
+{
+  "framework": "nextjs",
+  "ignoreCommand": "git diff --quiet HEAD^ HEAD -- backend/ contracts/ sdk/ render.yaml docker-compose.yml",
+  "env": {
+    "NEXT_PUBLIC_API_URL": "@next_public_api_url",
+    "NEXT_PUBLIC_OPERATOR_ACCOUNT_ID": "@next_public_operator_account_id"
+  }
+}
