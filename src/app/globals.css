@@ -1,26 +1,169 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #000000;
+  --foreground: #ffffff;
+  --purple: #8259ef;
+  --purple-light: #b47aff;
+  --purple-dark: #6d45d9;
+  --navy: #0a0a1a;
+  --navy-light: #11151d;
+  --gray-text: #9b9b9d;
+  --nav-height: 120px;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+  --font-sans: var(--font-inter);
+  --font-mono: var(--font-mono);
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-weight: 400;
+  font-size: 16px;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* ===== Hedera-style Typography ===== */
+h1, .h1 {
+  font-weight: 300;
+  font-size: 68px;
+  line-height: 1.05;
+  letter-spacing: -0.02em;
+}
+h2, .h2 {
+  font-weight: 300;
+  font-size: 44px;
+  line-height: 1.15;
+  letter-spacing: -0.01em;
+}
+h3, .h3 {
+  font-weight: 300;
+  font-size: 24px;
+  line-height: 1.3;
+}
+h4, .h4 {
+  font-weight: 400;
+  font-size: 18px;
+  line-height: 1.4;
+}
+
+/* Small-caps label style like Hedera */
+.label-caps {
+  font-size: 14px;
+  font-weight: 500;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--purple-light);
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: #0a0a1a; }
+::-webkit-scrollbar-thumb { background: #2a2a3a; border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: #3a3a4a; }
+
+/* Hero gradient — matches Hedera.com */
+.hero-gradient {
+  background: linear-gradient(0deg, #3036ba 0%, #00156e 46.98%, #000 98.98%);
+}
+
+/* Card styles */
+.glow-card {
+  position: relative;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  background: rgba(10, 10, 26, 0.6);
+  backdrop-filter: blur(10px);
+  transition: border-color 0.3s, box-shadow 0.3s, transform 0.3s;
+}
+.glow-card:hover {
+  border-color: rgba(130, 89, 239, 0.2);
+  box-shadow: 0 0 40px rgba(130, 89, 239, 0.06);
+  transform: translateY(-2px);
+}
+
+/* Hedera-style pill button */
+.btn-primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 12px 28px;
+  border-radius: 36px;
+  font-size: 14px;
+  font-weight: 400;
+  background: var(--purple);
+  color: #fff;
+  border: 1px solid transparent;
+  transition: all 0.22s;
+  cursor: pointer;
+}
+.btn-primary:hover {
+  background: var(--purple-dark);
+  box-shadow: 0 8px 32px rgba(130, 89, 239, 0.25);
+}
+
+.btn-outline {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 12px 28px;
+  border-radius: 36px;
+  font-size: 14px;
+  font-weight: 400;
+  background: transparent;
+  color: #fff;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  transition: all 0.22s;
+  cursor: pointer;
+}
+.btn-outline:hover {
+  border-color: #fff;
+  background: rgba(255, 255, 255, 0.05);
+}
+
+/* Tier badge animations */
+@keyframes pulse-glow {
+  0%, 100% { box-shadow: 0 0 5px currentColor; }
+  50% { box-shadow: 0 0 20px currentColor; }
+}
+.tier-elite { animation: pulse-glow 2s infinite; color: #f59e0b; }
+
+/* Score animation */
+@keyframes count-up {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.score-animate { animation: count-up 0.5s ease-out; }
+
+/* Fade in animations — Hedera-style staggered */
+@keyframes fade-in {
+  from { opacity: 0; transform: translateY(24px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.animate-fade-in { animation: fade-in 0.6s ease-out forwards; }
+.animate-fade-in-delay-1 { animation: fade-in 0.6s ease-out 0.2s forwards; opacity: 0; }
+.animate-fade-in-delay-2 { animation: fade-in 0.6s ease-out 0.4s forwards; opacity: 0; }
+.animate-fade-in-delay-3 { animation: fade-in 0.6s ease-out 0.6s forwards; opacity: 0; }
+.animate-fade-in-delay-4 { animation: fade-in 0.6s ease-out 0.8s forwards; opacity: 0; }
+
+/* Range slider */
+input[type="range"] { accent-color: #8259ef; }
+
+/* Responsive heading sizes */
+@media (max-width: 767px) {
+  h1, .h1 { font-size: 32px; }
+  h2, .h2 { font-size: 28px; }
+  h3, .h3 { font-size: 20px; }
+  :root { --nav-height: 80px; }
+}
+
+@media (min-width: 768px) and (max-width: 1024px) {
+  h1, .h1 { font-size: 48px; }
+  h2, .h2 { font-size: 36px; }
 }

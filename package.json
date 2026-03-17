@@ -9,6 +9,9 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "@hashgraph/sdk": "^2.81.0",
+    "hashconnect": "^3.0.14",
+    "jspdf": "^4.2.1",
     "next": "16.1.6",
     "react": "19.2.3",
     "react-dom": "19.2.3"

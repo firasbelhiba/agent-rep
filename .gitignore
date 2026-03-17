@@ -1,8 +1,6 @@
-# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
-
-# dependencies
-/node_modules
-/.pnp
+# ===== Dependencies =====
+node_modules/
+.pnp
 .pnp.*
 .yarn/*
 !.yarn/patches
@@ -10,32 +8,65 @@
 !.yarn/releases
 !.yarn/versions
 
-# testing
-/coverage
+# ===== Environment / Secrets (NEVER commit these) =====
+.env
+.env.*
+!.env.example
 
-# next.js
+# ===== Next.js =====
 /.next/
 /out/
+next-env.d.ts
 
-# production
+# ===== NestJS / Backend build =====
+backend/dist/
+backend/data/
+backend/*.db
+backend/**/*.db
+
+# ===== SDK build =====
+sdk/dist/
+sdk/node_modules/
+
+# ===== Production builds =====
 /build
+/dist
 
-# misc
-.DS_Store
-*.pem
+# ===== Testing =====
+/coverage
+backend/coverage/
 
-# debug
+# ===== Database files =====
+*.db
+*.sqlite
+*.sqlite3
+/data/
+
+# ===== Claude Code internal files =====
+.claude/
+
+# ===== Logs =====
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
+*.log
 
-# env files (can opt-in for committing if needed)
-.env*
+# ===== OS files =====
+.DS_Store
+Thumbs.db
 
-# vercel
+# ===== Certs & keys =====
+*.pem
+*.key
+*.cert
+
+# ===== Vercel =====
 .vercel
 
-# typescript
+# ===== TypeScript =====
 *.tsbuildinfo
-next-env.d.ts
+
+# ===== Temp & scratch files =====
+verify-tmp/
+*.tmp

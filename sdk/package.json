@@ -1,0 +1,31 @@
+{
+  "name": "agent-rep-sdk",
+  "version": "0.2.0",
+  "description": "TypeScript SDK for AgentRep — ERC-8004 on-chain reputation for AI agents on Hedera. Zero dependencies. Middleware, caching, retry, events, trust policies.",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "prepublishOnly": "npm run build"
+  },
+  "keywords": [
+    "ai-agents",
+    "reputation",
+    "hedera",
+    "erc-8004",
+    "hcs-10",
+    "trust",
+    "decentralized",
+    "middleware",
+    "sdk",
+    "typescript"
+  ],
+  "author": "AgentRep",
+  "license": "MIT",
+  "devDependencies": {
+    "typescript": "^5.3.0"
+  }
+}
