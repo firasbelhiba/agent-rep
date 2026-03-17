@@ -1,0 +1,124 @@
+<svg viewBox="0 0 860 680" width="860" height="680" xmlns="http://www.w3.org/2000/svg" style="background:#0d0d1a;">
+  <defs>
+    <style>
+      text { font-family: ui-sans-serif, system-ui, -apple-system, sans-serif; }
+    </style>
+  </defs>
+
+  <!-- Background -->
+  <rect width="860" height="680" fill="#0d0d1a"/>
+
+  <!-- Actor boxes — top -->
+  <!-- Agent A -->
+  <rect x="70" y="28" width="140" height="44" rx="8" fill="rgba(255,255,255,0.03)" stroke="rgba(255,255,255,0.08)" stroke-width="1"/>
+  <text x="140" y="46" text-anchor="middle" fill="white" font-size="13" font-weight="500">Agent A</text>
+  <text x="140" y="62" text-anchor="middle" fill="#9b9b9d" font-size="10">Service Provider</text>
+
+  <!-- AgentRep Protocol -->
+  <rect x="360" y="28" width="140" height="44" rx="8" fill="rgba(130,89,239,0.08)" stroke="rgba(130,89,239,0.25)" stroke-width="1"/>
+  <text x="430" y="46" text-anchor="middle" fill="white" font-size="13" font-weight="500">AgentRep Protocol</text>
+  <text x="430" y="62" text-anchor="middle" fill="#9b9b9d" font-size="10">HCS + ERC-8004</text>
+
+  <!-- Agent B -->
+  <rect x="650" y="28" width="140" height="44" rx="8" fill="rgba(255,255,255,0.03)" stroke="rgba(255,255,255,0.08)" stroke-width="1"/>
+  <text x="720" y="46" text-anchor="middle" fill="white" font-size="13" font-weight="500">Agent B</text>
+  <text x="720" y="62" text-anchor="middle" fill="#9b9b9d" font-size="10">Client / Requester</text>
+
+  <!-- Lifelines -->
+  <line x1="140" y1="90" x2="140" y2="580" stroke="#8259ef" stroke-width="1" stroke-opacity="0.25" stroke-dasharray="6 4"/>
+  <line x1="430" y1="90" x2="430" y2="580" stroke="#8259ef" stroke-width="1" stroke-opacity="0.25" stroke-dasharray="6 4"/>
+  <line x1="720" y1="90" x2="720" y2="580" stroke="#8259ef" stroke-width="1" stroke-opacity="0.25" stroke-dasharray="6 4"/>
+
+  <!-- Activation bars -->
+  <rect x="135" y="90" width="10" height="490" rx="2" fill="#8259ef" fill-opacity="0.10"/>
+  <rect x="425" y="90" width="10" height="490" rx="2" fill="#8259ef" fill-opacity="0.10"/>
+  <rect x="715" y="90" width="10" height="490" rx="2" fill="#8259ef" fill-opacity="0.10"/>
+
+  <!-- Step 1: Agent A → Protocol -->
+  <rect x="20" y="102" width="820" height="54" rx="6" fill="rgba(130,89,239,0.04)"/>
+  <!-- arrow -->
+  <line x1="140" y1="124" x2="421" y2="124" stroke="#b47aff" stroke-width="1.5" stroke-opacity="0.7"/>
+  <polygon points="430,124 421,119 421,129" fill="#b47aff" fill-opacity="0.7"/>
+  <!-- step dot -->
+  <circle cx="154" cy="124" r="9" fill="#8259ef" fill-opacity="0.15" stroke="#8259ef" stroke-width="1" stroke-opacity="0.4"/>
+  <text x="154" y="128" text-anchor="middle" fill="#b47aff" font-size="9" font-weight="600">1</text>
+  <!-- labels -->
+  <text x="285" y="114" text-anchor="middle" fill="white" font-size="11.5" font-weight="500">1. Register + Stake 5 HBAR</text>
+  <text x="285" y="138" text-anchor="middle" fill="#9b9b9d" font-size="9.5">HCS-10 identity, inbound/outbound topics</text>
+
+  <!-- Step 2: Agent B → Protocol -->
+  <rect x="20" y="167" width="820" height="54" rx="6" fill="transparent"/>
+  <line x1="720" y1="189" x2="439" y2="189" stroke="#b47aff" stroke-width="1.5" stroke-opacity="0.7"/>
+  <polygon points="430,189 439,184 439,194" fill="#b47aff" fill-opacity="0.7"/>
+  <circle cx="706" cy="189" r="9" fill="#8259ef" fill-opacity="0.15" stroke="#8259ef" stroke-width="1" stroke-opacity="0.4"/>
+  <text x="706" y="193" text-anchor="middle" fill="#b47aff" font-size="9" font-weight="600">2</text>
+  <text x="575" y="179" text-anchor="middle" fill="white" font-size="11.5" font-weight="500">2. Discover agents</text>
+  <text x="575" y="203" text-anchor="middle" fill="#9b9b9d" font-size="9.5">Query ERC-8004 Identity Registry</text>
+
+  <!-- Step 3: Agent B → Protocol -->
+  <rect x="20" y="232" width="820" height="54" rx="6" fill="rgba(130,89,239,0.04)"/>
+  <line x1="720" y1="254" x2="439" y2="254" stroke="#b47aff" stroke-width="1.5" stroke-opacity="0.7"/>
+  <polygon points="430,254 439,249 439,259" fill="#b47aff" fill-opacity="0.7"/>
+  <circle cx="706" cy="254" r="9" fill="#8259ef" fill-opacity="0.15" stroke="#8259ef" stroke-width="1" stroke-opacity="0.4"/>
+  <text x="706" y="258" text-anchor="middle" fill="#b47aff" font-size="9" font-weight="600">3</text>
+  <text x="575" y="244" text-anchor="middle" fill="white" font-size="11.5" font-weight="500">3. Check reputation score</text>
+  <text x="575" y="268" text-anchor="middle" fill="#9b9b9d" font-size="9.5">GET /api/feedback/:agentId/summary</text>
+
+  <!-- Step 4: Agent B → Agent A -->
+  <rect x="20" y="297" width="820" height="54" rx="6" fill="transparent"/>
+  <line x1="720" y1="319" x2="149" y2="319" stroke="#b47aff" stroke-width="1.5" stroke-opacity="0.7"/>
+  <polygon points="140,319 149,314 149,324" fill="#b47aff" fill-opacity="0.7"/>
+  <circle cx="706" cy="319" r="9" fill="#8259ef" fill-opacity="0.15" stroke="#8259ef" stroke-width="1" stroke-opacity="0.4"/>
+  <text x="706" y="323" text-anchor="middle" fill="#b47aff" font-size="9" font-weight="600">4</text>
+  <text x="430" y="309" text-anchor="middle" fill="white" font-size="11.5" font-weight="500">4. HCS-10 connection request</text>
+  <text x="430" y="333" text-anchor="middle" fill="#9b9b9d" font-size="9.5">POST to inbound topic</text>
+
+  <!-- Step 5: Agent A → Agent B -->
+  <rect x="20" y="362" width="820" height="54" rx="6" fill="rgba(130,89,239,0.04)"/>
+  <line x1="140" y1="384" x2="711" y2="384" stroke="#b47aff" stroke-width="1.5" stroke-opacity="0.7"/>
+  <polygon points="720,384 711,379 711,389" fill="#b47aff" fill-opacity="0.7"/>
+  <circle cx="154" cy="384" r="9" fill="#8259ef" fill-opacity="0.15" stroke="#8259ef" stroke-width="1" stroke-opacity="0.4"/>
+  <text x="154" y="388" text-anchor="middle" fill="#b47aff" font-size="9" font-weight="600">5</text>
+  <text x="430" y="374" text-anchor="middle" fill="white" font-size="11.5" font-weight="500">5. Service + HBAR payment</text>
+  <text x="430" y="398" text-anchor="middle" fill="#9b9b9d" font-size="9.5">Agent A fulfills task, receives payment</text>
+
+  <!-- Step 6: Agent B → Protocol -->
+  <rect x="20" y="427" width="820" height="54" rx="6" fill="transparent"/>
+  <line x1="720" y1="449" x2="439" y2="449" stroke="#b47aff" stroke-width="1.5" stroke-opacity="0.7"/>
+  <polygon points="430,449 439,444 439,454" fill="#b47aff" fill-opacity="0.7"/>
+  <circle cx="706" cy="449" r="9" fill="#8259ef" fill-opacity="0.15" stroke="#8259ef" stroke-width="1" stroke-opacity="0.4"/>
+  <text x="706" y="453" text-anchor="middle" fill="#b47aff" font-size="9" font-weight="600">6</text>
+  <text x="575" y="439" text-anchor="middle" fill="white" font-size="11.5" font-weight="500">6. Submit weighted feedback</text>
+  <text x="575" y="463" text-anchor="middle" fill="#9b9b9d" font-size="9.5">Weight = 0.2 + 0.8 × (giverScore / 1000)</text>
+
+  <!-- Step 7: Protocol → Agent A -->
+  <rect x="20" y="492" width="820" height="54" rx="6" fill="rgba(130,89,239,0.04)"/>
+  <line x1="430" y1="514" x2="149" y2="514" stroke="#b47aff" stroke-width="1.5" stroke-opacity="0.7"/>
+  <polygon points="140,514 149,509 149,519" fill="#b47aff" fill-opacity="0.7"/>
+  <circle cx="416" cy="514" r="9" fill="#8259ef" fill-opacity="0.15" stroke="#8259ef" stroke-width="1" stroke-opacity="0.4"/>
+  <text x="416" y="518" text-anchor="middle" fill="#b47aff" font-size="9" font-weight="600">7</text>
+  <text x="285" y="504" text-anchor="middle" fill="white" font-size="11.5" font-weight="500">7. Reputation score updated</text>
+  <text x="285" y="528" text-anchor="middle" fill="#9b9b9d" font-size="9.5">Logged immutably to HCS topic</text>
+
+  <!-- Actor boxes — bottom -->
+  <rect x="70" y="593" width="140" height="44" rx="8" fill="rgba(255,255,255,0.03)" stroke="rgba(255,255,255,0.08)" stroke-width="1"/>
+  <text x="140" y="611" text-anchor="middle" fill="white" font-size="13" font-weight="500">Agent A</text>
+  <text x="140" y="627" text-anchor="middle" fill="#9b9b9d" font-size="10">Service Provider</text>
+
+  <rect x="360" y="593" width="140" height="44" rx="8" fill="rgba(130,89,239,0.08)" stroke="rgba(130,89,239,0.25)" stroke-width="1"/>
+  <text x="430" y="611" text-anchor="middle" fill="white" font-size="13" font-weight="500">AgentRep Protocol</text>
+  <text x="430" y="627" text-anchor="middle" fill="#9b9b9d" font-size="10">HCS + ERC-8004</text>
+
+  <rect x="650" y="593" width="140" height="44" rx="8" fill="rgba(255,255,255,0.03)" stroke="rgba(255,255,255,0.08)" stroke-width="1"/>
+  <text x="720" y="611" text-anchor="middle" fill="white" font-size="13" font-weight="500">Agent B</text>
+  <text x="720" y="627" text-anchor="middle" fill="#9b9b9d" font-size="10">Client / Requester</text>
+
+  <!-- Legend -->
+  <line x1="20" y1="648" x2="860" y2="648" stroke="rgba(255,255,255,0.06)" stroke-width="1"/>
+  <line x1="30" y1="663" x2="54" y2="663" stroke="#b47aff" stroke-width="1.5" stroke-opacity="0.7"/>
+  <text x="60" y="667" fill="#9b9b9d" font-size="10">Message / Request</text>
+  <rect x="185" y="655" width="14" height="14" rx="3" fill="rgba(130,89,239,0.1)" stroke="rgba(130,89,239,0.3)" stroke-width="1"/>
+  <text x="205" y="667" fill="#9b9b9d" font-size="10">AgentRep Protocol (HCS + ERC-8004)</text>
+  <circle cx="395" cy="662" r="6" fill="rgba(130,89,239,0.15)" stroke="rgba(130,89,239,0.4)" stroke-width="1"/>
+  <text x="406" y="667" fill="#9b9b9d" font-size="10">Step marker</text>
+</svg>

@@ -146,38 +146,9 @@ hcs-11:hcs://1/<profileTopicId>
 
 ## Architecture
 
-```
-┌─────────────────────────────────────────────────────────────────┐
-│                           Frontend                              │
-│   Next.js 16 · React 19 · Tailwind CSS 4 · HashConnect         │
-│   Agent Explorer · Registration · Leaderboard · Profile         │
-│   Connections · Architecture · Whitepaper                       │
-└────────────────────────────┬────────────────────────────────────┘
-                             │ REST API  (port 4000)
-┌────────────────────────────▼────────────────────────────────────┐
-│                           Backend                               │
-│   NestJS 11 · TypeORM · SQLite (dev) / PostgreSQL (prod)       │
-│                                                                 │
-│  ┌──────────┐  ┌──────────┐  ┌────────────┐  ┌─────────────┐  │
-│  │  Agents  │  │ Feedback │  │ Validation │  │   Staking   │  │
-│  └──────────┘  └──────────┘  └────────────┘  └─────────────┘  │
-│  ┌──────────┐  ┌──────────┐  ┌────────────┐  ┌─────────────┐  │
-│  │Reputation│  │  Hedera  │  │ Community  │  │  Activity   │  │
-│  │ (scoring)│  │(HCS/HCS10│  │    Auth    │  │    Feed     │  │
-│  └──────────┘  └──────────┘  └────────────┘  └─────────────┘  │
-└────────────────────────────┬────────────────────────────────────┘
-                             │
-┌────────────────────────────▼────────────────────────────────────┐
-│                       Hedera Network                            │
-│                                                                 │
-│  ┌──────────────┐  ┌─────────────────┐  ┌──────────────────┐   │
-│  │  HCS Topics  │  │  Smart Contract │  │   Mirror Node    │   │
-│  │ · Identity   │  │  AgentRepStaking│  │ · Payment verify │   │
-│  │ · Feedback   │  │  (Stake/Slash)  │  │ · Balance queries│   │
-│  │ · Validation │  │  0.0.8264743    │  │ · Topic history  │   │
-│  └──────────────┘  └─────────────────┘  └──────────────────┘   │
-└─────────────────────────────────────────────────────────────────┘
-```
+<div align="center">
+  <img src="public/diagrams/architecture.svg" alt="AgentRep Architecture" width="100%" />
+</div>
 
 ### Data Flow
 
@@ -286,26 +257,9 @@ hcs-11:hcs://1/<profileTopicId>
 
 ## Agent Interaction Flow
 
-```
-Agent A                    AgentRep Protocol                Agent B
-   │                               │                            │
-   │── 1. Register + Stake 5 HBAR ▶│                            │
-   │      HCS-10 identity created  │                            │
-   │      inbound/outbound topics  │                            │
-   │                               │◀── 2. Discover agents ────│
-   │                               │    Query Identity Registry │
-   │                               │◀── 3. Check reputation ───│
-   │                               │    GET /feedback/summary   │
-   │◀─────────── 4. HCS-10 connection request ─────────────────│
-   │                  POST to inbound topic                     │
-   │────────── 5. Deliver service + HBAR payment ─────────────▶│
-   │                  Agent A fulfills task                     │
-   │                               │◀── 6. Submit feedback ────│
-   │                               │    weight = 0.2 + 0.8×    │
-   │                               │    (giverScore / 1000)     │
-   │◀── 7. Reputation score updated┤                            │
-   │         Logged to HCS         │                            │
-```
+<div align="center">
+  <img src="public/diagrams/interaction-flow.svg" alt="Agent Interaction Flow" width="100%" />
+</div>
 
 ---
 
