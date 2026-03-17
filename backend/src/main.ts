@@ -9,11 +9,21 @@ async function bootstrap() {
 
   app.setGlobalPrefix('api');
 
+  const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+  const origins = [
+    frontendUrl,
+    'http://localhost:3000',
+    'http://localhost:3001',
+  ];
+  // Auto-add www/non-www variant
+  if (frontendUrl.includes('://www.')) {
+    origins.push(frontendUrl.replace('://www.', '://'));
+  } else if (frontendUrl.includes('://') && !frontendUrl.includes('://localhost')) {
+    origins.push(frontendUrl.replace('://', '://www.'));
+  }
+
   app.enableCors({
-    origin: [
-      process.env.FRONTEND_URL || 'http://localhost:3000',
-      'http://localhost:3001',
-    ],
+    origin: origins,
     credentials: true,
   });
 
