@@ -103,7 +103,8 @@ export type AgentRepEvent =
   | 'validation:requested'
   | 'validation:submitted'
   | 'agent:registered'
-  | 'trust:checked';
+  | 'trust:checked'
+  | 'message:sent';
 
 export type EventHandler<T = unknown> = (data: T) => void;
 
@@ -419,3 +420,20 @@ export interface FindAgentsOptions {
   sortBy?: 'score' | 'activity' | 'name';
   limit?: number;
 }
+
+// ---- Messaging (HCS-10) ----
+
+export interface TopicMessage {
+  data: unknown;
+  consensusTimestamp: string;
+  sequenceNumber: number;
+}
+
+export interface IncomingMessage {
+  connectionTopicId: string;
+  fromAgentId: string;
+  data: unknown;
+  consensusTimestamp: string;
+  sequenceNumber: number;
+}
+

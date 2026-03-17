@@ -37,6 +37,8 @@ import {
   BatchFeedbackResult,
   WatchOptions,
   ReputationChange,
+  Connection,
+  TopicMessage,
 } from './types';
 
 import { EventEmitter } from './events';
@@ -1043,6 +1045,58 @@ export class AgentRepClient extends EventEmitter {
   async getDisputes(agentId?: string): Promise<{ disputes: any[] }> {
     const path = agentId ? `/staking/disputes/${agentId}` : '/staking/disputes/all';
     return this.request('GET', path);
+  }
+
+  // ================================================================
+  //  CONNECTIONS & MESSAGING (HCS-10)
+  // ================================================================
+
+  /**
+   * List all connections for an agent.
+   *
+   * @example
+   * ```ts
+   * const connections = await client.listConnections('0.0.8265268');
+   * const active = connections.filter(c => c.status === 'active');
+   * ```
+   */
+  async listConnections(agentId: string): Promise<Connection[]> {
+    const data = await this.get<{ connections: Connection[] }>(`/connections/${agentId}`);
+    return data.connections;
+  }
+
+  /**
+   * Send a message on a connection topic (HCS-10).
+   *
+   * @example
+   * ```ts
+   * await client.sendMessage('0.0.8265300', 'Hello from my agent!');
+   * ```
+   */
+  async sendMessage(connectionTopicId: string, message: string, memo?: string): Promise<boolean> {
+    const data = await this.post<{ success: boolean }>('/connections/message', {
+      connectionTopicId,
+      message,
+      memo,
+    });
+    this.emit('message:sent', { connectionTopicId, message, timestamp: Date.now() });
+    return data.success;
+  }
+
+  /**
+   * Get messages from a connection topic.
+   *
+   * @example
+   * ```ts
+   * const messages = await client.getMessages('0.0.8265300');
+   * for (const msg of messages) {
+   *   console.log(`[#${msg.sequenceNumber}]`, msg.data);
+   * }
+   * ```
+   */
+  async getMessages(connectionTopicId: string): Promise<TopicMessage[]> {
+    const data = await this.get<{ messages: TopicMessage[] }>(`/connections/messages/${connectionTopicId}`);
+    return data.messages;
   }
 
   /**

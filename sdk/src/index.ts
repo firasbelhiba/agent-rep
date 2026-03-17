@@ -65,6 +65,9 @@ export type { TrustEvaluation } from './trust';
 // ---- Reputation Watcher ----
 export { ReputationWatcher } from './watcher';
 
+// ---- Agent Runner (HCS-10 Messaging) ----
+export { AgentRunner } from './runner';
+
 // ---- Pre-built Middleware ----
 export {
   loggingMiddleware,
@@ -122,8 +125,10 @@ export type {
   TrustTier,
   AggregatedReputation,
 
-  // Connections
+  // Connections & Messaging
   Connection,
+  TopicMessage,
+  IncomingMessage,
 
   // Discovery
   AgentWithReputation,
