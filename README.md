@@ -6,19 +6,25 @@
   <p><strong>On-Chain Reputation Infrastructure for the Agentic Economy</strong></p>
 
   <p>
-    <img src="https://img.shields.io/badge/Hedera-Testnet-8259EF?style=flat-square&logo=hedera&logoColor=white" />
+    <a href="https://hashscan.io/testnet/contract/0.0.8264743">
+      <img src="https://img.shields.io/badge/Hedera-Testnet-8259EF?style=flat-square&logo=hedera&logoColor=white" />
+    </a>
     <img src="https://img.shields.io/badge/Standard-ERC--8004-8259EF?style=flat-square" />
     <img src="https://img.shields.io/badge/HCS--10-Agent%20Identity-6B46C1?style=flat-square" />
-    <img src="https://img.shields.io/badge/Contract-0.0.8264743-4C1D95?style=flat-square" />
+    <a href="https://hashscan.io/testnet/contract/0.0.8264743">
+      <img src="https://img.shields.io/badge/Contract-0.0.8264743-4C1D95?style=flat-square" />
+    </a>
     <img src="https://img.shields.io/badge/Hackathon-Hello%20Future%20Apex%202026-8259EF?style=flat-square" />
   </p>
 
   <p>
     <a href="https://hashscan.io/testnet/contract/0.0.8264743">Smart Contract</a> ·
+    <a href="https://hashscan.io/testnet/topic/0.0.8264956">Identity Topic</a> ·
+    <a href="https://hashscan.io/testnet/topic/0.0.8264959">Feedback Topic</a> ·
+    <a href="https://hashscan.io/testnet/topic/0.0.8264962">Validation Topic</a> ·
     <a href="#architecture">Architecture</a> ·
     <a href="#api-reference">API Reference</a> ·
-    <a href="#getting-started">Getting Started</a> ·
-    <a href="#roadmap">Roadmap</a>
+    <a href="#getting-started">Getting Started</a>
   </p>
 </div>
 
@@ -31,6 +37,19 @@ As AI agents proliferate across DeFi, healthcare, legal, and enterprise workflow
 AgentRep is a decentralized reputation protocol that lets AI agents build, earn, and verify trust on-chain. It implements the **ERC-8004** standard natively on Hedera using HCS topics — combining reputation-weighted feedback, stake-based accountability, cross-agent validation, and open standards (**HCS-10 / HCS-11**) into a tamper-proof, Sybil-resistant trust layer.
 
 > Built for the **Hello Future Apex Hackathon** · Track: **AI & Agents** · Bounty: **HOL Registry Broker**
+
+---
+
+## Deployed Resources
+
+All contracts and HCS topics are live on **Hedera Testnet** and publicly verifiable on HashScan.
+
+| Resource | ID | HashScan |
+|---|---|---|
+| AgentRepStaking Contract | `0.0.8264743` | [View on HashScan](https://hashscan.io/testnet/contract/0.0.8264743) |
+| HCS Identity Topic | `0.0.8264956` | [View on HashScan](https://hashscan.io/testnet/topic/0.0.8264956) |
+| HCS Feedback Topic | `0.0.8264959` | [View on HashScan](https://hashscan.io/testnet/topic/0.0.8264959) |
+| HCS Validation Topic | `0.0.8264962` | [View on HashScan](https://hashscan.io/testnet/topic/0.0.8264962) |
 
 ---
 
@@ -193,7 +212,10 @@ hcs-11:hcs://1/<profileTopicId>
 | Network | Hedera Testnet / Mainnet |
 | Consensus | HCS topics for immutable event logging |
 | Smart Contract | Solidity 0.8.20+ — AgentRepStaking.sol |
-| Contract ID | `0.0.8264743` (testnet) |
+| Contract ID | [`0.0.8264743`](https://hashscan.io/testnet/contract/0.0.8264743) (testnet) |
+| HCS Identity Topic | [`0.0.8264956`](https://hashscan.io/testnet/topic/0.0.8264956) |
+| HCS Feedback Topic | [`0.0.8264959`](https://hashscan.io/testnet/topic/0.0.8264959) |
+| HCS Validation Topic | [`0.0.8264962`](https://hashscan.io/testnet/topic/0.0.8264962) |
 | Standards | ERC-8004, HCS-10, HCS-11 |
 
 ---
@@ -337,7 +359,7 @@ Remaining stake:  4.5 HBAR
 
 ## Smart Contract
 
-**`AgentRepStaking.sol`** — deployed at [`0.0.8264743`](https://hashscan.io/testnet/contract/0.0.8264743) on Hedera Testnet
+**`AgentRepStaking.sol`** — deployed at **[`0.0.8264743`](https://hashscan.io/testnet/contract/0.0.8264743)** on Hedera Testnet
 
 ```solidity
 // Deposit stake (payable, in tinybars)
@@ -632,7 +654,7 @@ agent-rep/
 - Technical whitepaper (PDF) + architecture documentation
 
 ### Phase 2 — Smart Contract & On-Chain Slashing ✅
-- `AgentRepStaking.sol` deployed on Hedera Testnet (`0.0.8264743`)
+- [`AgentRepStaking.sol`](https://hashscan.io/testnet/contract/0.0.8264743) deployed on Hedera Testnet (`0.0.8264743`)
 - On-chain stake management and dispute-triggered slashing
 - Mirror node payment verification for agent registration
 - Operating balance system with per-transaction fee deduction
@@ -692,12 +714,24 @@ Agents and community members stake HBAR to increase their influence and earn pro
 
 ## Links
 
-- **Smart Contract on HashScan** — [hashscan.io/testnet/contract/0.0.8264743](https://hashscan.io/testnet/contract/0.0.8264743)
-- **ERC-8004** — Ethereum Agent Reputation Standard
-- **HCS-10** — Hedera Agent Communication Protocol
-- **HCS-11** — Hedera Agent Identity Profiles
-- **Hedera Mirror Node** — [testnet.mirrornode.hedera.com](https://testnet.mirrornode.hedera.com)
+### Live on Hedera Testnet
+
+| Resource | Link |
+|---|---|
+| AgentRepStaking Contract | [hashscan.io/testnet/contract/0.0.8264743](https://hashscan.io/testnet/contract/0.0.8264743) |
+| HCS Identity Topic | [hashscan.io/testnet/topic/0.0.8264956](https://hashscan.io/testnet/topic/0.0.8264956) |
+| HCS Feedback Topic | [hashscan.io/testnet/topic/0.0.8264959](https://hashscan.io/testnet/topic/0.0.8264959) |
+| HCS Validation Topic | [hashscan.io/testnet/topic/0.0.8264962](https://hashscan.io/testnet/topic/0.0.8264962) |
+
+### Standards & References
+
+- **ERC-8004** — [Ethereum Agent Reputation Standard](https://eips.ethereum.org/EIPS/eip-8004)
+- **HCS-10** — [Hedera Agent Communication Protocol](https://github.com/hashgraph/hedera-improvement-proposal/blob/main/HIP/hip-820.md)
+- **HCS-11** — [Hedera Agent Identity Profiles](https://github.com/hashgraph/hedera-improvement-proposal)
+- **Hedera Mirror Node (Testnet)** — [testnet.mirrornode.hedera.com](https://testnet.mirrornode.hedera.com)
+- **HashScan Explorer** — [hashscan.io/testnet](https://hashscan.io/testnet)
 - **Hashgraph Online Registry** — [hol.org](https://hol.org)
+- **Hedera Developer Portal** — [portal.hedera.com](https://portal.hedera.com)
 
 ---
 
