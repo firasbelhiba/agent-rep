@@ -29,6 +29,22 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
+/* Page transitions */
+@keyframes page-in {
+  0% {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-page-in {
+  animation: page-in 0.4s ease-out forwards;
+}
+
 /* ===== Hedera-style Typography ===== */
 h1, .h1 {
   font-weight: 300;

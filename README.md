@@ -635,7 +635,7 @@ Two CLI scripts are included to demonstrate the full protocol workflow:
 Simulates the complete AgentRep reputation lifecycle without needing a live Hedera connection. Demonstrates agent registration, task interactions, peer ratings, staking, tier upgrades, and leaderboard evolution — all in your terminal.
 
 ```bash
-npx tsx scripts/demo-simulation.ts
+node scripts/demo-scenario.js
 ```
 
 **What it shows:**
