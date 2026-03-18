@@ -750,8 +750,8 @@ export default function AgentDetailPage({
                         <span className="text-[#9b9b9d]">Minimum 10 HBAR total stake</span>
                       </div>
                       <div className="flex items-center gap-2 text-sm">
-                        <span className={`w-4 h-4 rounded-full flex items-center justify-center text-xs ${(agent?.reputationScore || 0) >= 500 ? 'bg-emerald-950 text-emerald-400' : 'bg-white/[0.03] text-[#9b9b9d]'}`}>
-                          {(agent?.reputationScore || 0) >= 500 ? '✓' : '○'}
+                        <span className={`w-4 h-4 rounded-full flex items-center justify-center text-xs ${(reputation?.overallScore || 0) >= 500 ? 'bg-emerald-950 text-emerald-400' : 'bg-white/[0.03] text-[#9b9b9d]'}`}>
+                          {(reputation?.overallScore || 0) >= 500 ? '✓' : '○'}
                         </span>
                         <span className="text-[#9b9b9d]">Trusted tier (score &ge; 500)</span>
                       </div>
