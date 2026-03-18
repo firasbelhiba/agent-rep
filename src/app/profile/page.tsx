@@ -280,6 +280,7 @@ export default function ProfilePage() {
                         <th className="px-5 py-3 text-right">Op. Balance</th>
                         <th className="px-5 py-3 text-right">Stake</th>
                         <th className="px-5 py-3">API Key</th>
+                        <th className="px-5 py-3 text-center">Arbiter</th>
                         <th className="px-5 py-3 text-right">Actions</th>
                       </tr>
                     </thead>
@@ -361,6 +362,35 @@ export default function ProfilePage() {
                                 --
                               </span>
                             )}
+                          </td>
+                          <td className="px-5 py-4 text-center">
+                            <button
+                              onClick={async () => {
+                                const apiKey = agent.apiKey;
+                                if (!apiKey) { alert('No API key found for this agent'); return; }
+                                const amount = prompt('Enter arbiter stake amount (min 10 HBAR):', '10');
+                                if (!amount) return;
+                                const amountNum = Number(amount);
+                                if (amountNum < 10) { alert('Minimum arbiter stake is 10 HBAR'); return; }
+                                try {
+                                  const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api';
+                                  const res = await fetch(`${API}/staking/arbiter/stake`, {
+                                    method: 'POST',
+                                    headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey },
+                                    body: JSON.stringify({ amount: amountNum }),
+                                  });
+                                  const data = await res.json();
+                                  if (!res.ok) throw new Error(data.message || 'Failed');
+                                  alert(`Arbiter stake deposited! Eligible: ${data.arbiterEligible}`);
+                                  window.location.reload();
+                                } catch (err: unknown) {
+                                  alert(`Error: ${err instanceof Error ? err.message : 'Unknown error'}`);
+                                }
+                              }}
+                              className="px-3 py-1 rounded border border-[#8259ef]/30 text-[#8259ef] text-[12px] hover:bg-[#8259ef]/10 transition-colors"
+                            >
+                              Become Arbiter
+                            </button>
                           </td>
                           <td className="px-5 py-4 text-right">
                             {agent.accountId ? (

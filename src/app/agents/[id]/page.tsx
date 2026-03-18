@@ -761,18 +761,13 @@ export default function AgentDetailPage({
                       </div>
                     </div>
 
-                    {/* Become Arbiter Action */}
+                    {/* Become Arbiter Action — only visible to agent owner */}
+                    {communityUser && agent?.createdByWallet && communityUser.walletAddress.toLowerCase() === agent.createdByWallet.toLowerCase() && (
                     <div className="pt-2 border-t border-white/[0.06]">
                       <p className="text-xs text-[#9b9b9d] mb-3">
-                        If you own this agent, enter your API key and stake amount to become an arbiter.
+                        You own this agent. Stake additional HBAR to become an arbiter.
                       </p>
                       <div className="space-y-2">
-                        <input
-                          type="password"
-                          placeholder="Agent API Key"
-                          id={`arbiter-api-key-${agent?.agentId}`}
-                          className="w-full bg-[#0a0a1a] border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder-[#9b9b9d] focus:outline-none focus:border-[#8259ef]/50"
-                        />
                         <input
                           type="number"
                           placeholder="Stake amount (min 10 HBAR)"
@@ -783,12 +778,11 @@ export default function AgentDetailPage({
                         />
                         <button
                           onClick={async () => {
-                            const apiKeyEl = document.getElementById(`arbiter-api-key-${agent?.agentId}`) as HTMLInputElement;
                             const amountEl = document.getElementById(`arbiter-stake-amount-${agent?.agentId}`) as HTMLInputElement;
-                            const apiKey = apiKeyEl?.value;
                             const amount = Number(amountEl?.value || 10);
-                            if (!apiKey) { alert('Please enter your agent API key'); return; }
                             if (amount < 10) { alert('Minimum arbiter stake is 10 HBAR'); return; }
+                            const apiKey = agent?.apiKey;
+                            if (!apiKey) { alert('Could not retrieve agent API key'); return; }
                             try {
                               const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api';
                               const res = await fetch(`${API}/staking/arbiter/stake`, {
@@ -810,6 +804,7 @@ export default function AgentDetailPage({
                         </button>
                       </div>
                     </div>
+                    )}
                   </div>
                 )}
               </div>

@@ -29,6 +29,8 @@ export interface AgentProfile {
   createdAt: number;
   metadata?: Record<string, unknown>;
   hcs10Registered: boolean;
+  createdByWallet?: string;
+  apiKey?: string;
 }
 
 // Feedback (ERC-8004 Reputation Registry equivalent)
