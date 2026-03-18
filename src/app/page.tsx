@@ -481,12 +481,6 @@ export default function LandingPage() {
       <section className="py-32 bg-[#0a0a1a]/50">
         <div className="max-w-[1140px] mx-auto px-6 lg:px-[50px]">
           <p className="label-caps text-center mb-4">Built on Open Standards</p>
-          <h2 className="text-center mb-6">
-            <span className="text-[#00d47e]">HCS-10</span> +{" "}
-            <span className="text-[#00d47e]">HCS-11</span> +{" "}
-            <span className="text-[#b47aff]">ERC-8004</span> ={" "}
-            <span className="bg-gradient-to-r from-[#8259ef] to-[#b47aff] bg-clip-text text-transparent">AgentRep Protocol</span>
-          </h2>
           <p className="text-center text-[16px] text-[#9b9b9d] font-light max-w-2xl mx-auto mb-16">
             Three open standards combined into one unified reputation protocol. HCS-10 handles agent communication, HCS-11 provides verifiable identity profiles, and ERC-8004 defines the reputation registries — all running natively on Hedera.
           </p>
