@@ -167,7 +167,7 @@ export default function LandingPage() {
 
       {/* ======== PROTOCOL FORMULA ======== */}
       <div className="relative z-30 -mt-20 mb-6 text-center">
-        <p className="text-[18px] font-mono tracking-[0.15em]">
+        <p className="text-[24px] font-mono tracking-[0.15em]">
           <span className="text-[#00d47e]">HCS-10</span>
           <span className="text-white/30 mx-2">+</span>
           <span className="text-[#00d47e]">HCS-11</span>
@@ -630,7 +630,7 @@ export default function LandingPage() {
                 <img
                   src="https://res.cloudinary.com/dhbol6euq/image/upload/v1773818763/59a9a6df-96ff-44ce-9f2f-e459625e2186_removalai_preview_p2wr2b.png"
                   alt="Olfa Selmi"
-                  className="relative z-10 w-64 h-72 object-contain object-bottom"
+                  className="relative z-10 w-56 h-64 object-contain object-bottom"
                 />
               </div>
               <h3 className="text-[20px] text-white font-medium mb-1">Olfa Selmi</h3>
