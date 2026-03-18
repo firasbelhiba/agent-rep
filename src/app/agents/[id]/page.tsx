@@ -48,6 +48,7 @@ export default function AgentDetailPage({
     arbiterStake?: number;
     totalResolutions?: number;
     majorityRate?: number;
+    arbitrationsResolved?: number;
   } | null>(null);
   const [disputes, setDisputes] = useState<any[]>([]);
 
