@@ -166,14 +166,14 @@ export default function LandingPage() {
       </section>
 
       {/* ======== PROTOCOL FORMULA ======== */}
-      <div className="relative z-30 -mt-20 mb-6 text-center">
+      <div className="relative z-30 -mt-16 mb-16 text-center">
         <p className="text-[24px] font-mono tracking-[0.15em]">
           <span className="text-[#00d47e]">HCS-10</span>
-          <span className="text-white/30 mx-2">+</span>
+          <span className="text-white/30 mx-5">+</span>
           <span className="text-[#00d47e]">HCS-11</span>
-          <span className="text-white/30 mx-2">+</span>
+          <span className="text-white/30 mx-5">+</span>
           <span className="text-[#b47aff]">ERC-8004</span>
-          <span className="text-white/30 mx-3">=</span>
+          <span className="text-white/30 mx-6">=</span>
           <span className="bg-gradient-to-r from-[#8259ef] to-[#b47aff] bg-clip-text text-transparent font-semibold">AgentRep Protocol</span>
         </p>
       </div>
