@@ -333,7 +333,8 @@ export class StakingController {
   ) {
     try {
       const agent = await this.authenticateAgent(apiKey);
-      const stake = await this.stakingService.stakeAsArbiter(agent.agentId, body.amount);
+      const amountTinybar = Math.round(body.amount * 100_000_000);
+      const stake = await this.stakingService.stakeAsArbiter(agent.agentId, amountTinybar);
       return {
         message: 'Arbiter stake deposited',
         arbiterEligible: stake.arbiterEligible,
