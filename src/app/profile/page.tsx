@@ -32,6 +32,10 @@ export default function ProfilePage() {
     message: string;
     hashScanUrl?: string;
   } | null>(null);
+  const [arbiterAgent, setArbiterAgent] = useState<string | null>(null);
+  const [arbiterAmount, setArbiterAmount] = useState("10");
+  const [arbiterLoading, setArbiterLoading] = useState(false);
+  const [arbiterResult, setArbiterResult] = useState<{ success: boolean; message: string } | null>(null);
   const [operatorBalance, setOperatorBalance] = useState<number | null>(null);
   const [userWallet, setUserWallet] = useState<string | null>(null);
   const [userName, setUserName] = useState<string | null>(null);
@@ -365,27 +369,10 @@ export default function ProfilePage() {
                           </td>
                           <td className="px-5 py-4 text-center">
                             <button
-                              onClick={async () => {
-                                const apiKey = agent.apiKey;
-                                if (!apiKey) { alert('No API key found for this agent'); return; }
-                                const amount = prompt('Enter arbiter stake amount (min 10 HBAR):', '10');
-                                if (!amount) return;
-                                const amountNum = Number(amount);
-                                if (amountNum < 10) { alert('Minimum arbiter stake is 10 HBAR'); return; }
-                                try {
-                                  const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api';
-                                  const res = await fetch(`${API}/staking/arbiter/stake`, {
-                                    method: 'POST',
-                                    headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey },
-                                    body: JSON.stringify({ amount: amountNum }),
-                                  });
-                                  const data = await res.json();
-                                  if (!res.ok) throw new Error(data.message || 'Failed');
-                                  alert(`Arbiter stake deposited! Eligible: ${data.arbiterEligible}`);
-                                  window.location.reload();
-                                } catch (err: unknown) {
-                                  alert(`Error: ${err instanceof Error ? err.message : 'Unknown error'}`);
-                                }
+                              onClick={() => {
+                                setArbiterAgent(agent.agentId);
+                                setArbiterAmount("10");
+                                setArbiterResult(null);
                               }}
                               className="px-3 py-1 rounded border border-[#8259ef]/30 text-[#8259ef] text-[12px] hover:bg-[#8259ef]/10 transition-colors"
                             >
@@ -451,6 +438,95 @@ export default function ProfilePage() {
           )}
         </div>
       </main>
+
+      {/* Arbiter Stake Modal */}
+      {arbiterAgent && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+          <div className="bg-[#111122] border border-white/[0.08] rounded-2xl p-8 w-full max-w-md shadow-2xl">
+            <h3 className="text-xl text-white font-medium mb-2">Become an Arbiter</h3>
+            <p className="text-sm text-[#9b9b9d] mb-6">
+              Stake additional HBAR to qualify as an arbiter for <span className="text-white font-medium">{agents.find(a => a.agentId === arbiterAgent)?.name}</span>. Arbiters resolve disputes and earn rewards.
+            </p>
+
+            <div className="space-y-4">
+              <div>
+                <label className="text-xs text-[#9b9b9d] uppercase tracking-wider block mb-2">Stake Amount</label>
+                <div className="relative">
+                  <input
+                    type="number"
+                    min={10}
+                    value={arbiterAmount}
+                    onChange={(e) => setArbiterAmount(e.target.value)}
+                    className="w-full bg-[#0a0a1a] border border-white/10 rounded-lg px-4 py-3 text-white text-lg focus:outline-none focus:border-[#8259ef]/50"
+                  />
+                  <span className="absolute right-4 top-1/2 -translate-y-1/2 text-[#9b9b9d] text-sm">HBAR</span>
+                </div>
+                <p className="text-xs text-[#9b9b9d] mt-1">Minimum 10 HBAR required</p>
+              </div>
+
+              <div className="bg-white/[0.03] border border-white/[0.06] rounded-lg p-4 space-y-2">
+                <p className="text-xs text-[#9b9b9d] uppercase tracking-wider mb-2">Requirements</p>
+                <div className="flex items-center gap-2 text-sm">
+                  <span className="text-emerald-400">✓</span>
+                  <span className="text-[#9b9b9d]">Minimum 10 HBAR stake</span>
+                </div>
+                <div className="flex items-center gap-2 text-sm">
+                  <span className="text-[#9b9b9d]">○</span>
+                  <span className="text-[#9b9b9d]">Trusted tier (score ≥ 500)</span>
+                </div>
+                <div className="flex items-center gap-2 text-sm">
+                  <span className="text-[#9b9b9d]">○</span>
+                  <span className="text-[#9b9b9d]">Minimum 10 interactions</span>
+                </div>
+              </div>
+
+              {arbiterResult && (
+                <div className={`rounded-lg px-4 py-3 text-sm ${arbiterResult.success ? 'bg-emerald-950/50 border border-emerald-800 text-emerald-400' : 'bg-red-950/50 border border-red-800 text-red-400'}`}>
+                  {arbiterResult.message}
+                </div>
+              )}
+
+              <div className="flex gap-3 pt-2">
+                <button
+                  onClick={() => { setArbiterAgent(null); setArbiterResult(null); }}
+                  className="flex-1 px-4 py-3 rounded-lg border border-white/10 text-[#9b9b9d] text-sm hover:bg-white/[0.03] transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  disabled={arbiterLoading}
+                  onClick={async () => {
+                    const agent = agents.find(a => a.agentId === arbiterAgent);
+                    if (!agent?.apiKey) { setArbiterResult({ success: false, message: 'No API key found' }); return; }
+                    const amount = Number(arbiterAmount);
+                    if (amount < 10) { setArbiterResult({ success: false, message: 'Minimum stake is 10 HBAR' }); return; }
+                    setArbiterLoading(true);
+                    try {
+                      const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api';
+                      const res = await fetch(`${API}/staking/arbiter/stake`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json', 'x-api-key': agent.apiKey },
+                        body: JSON.stringify({ amount }),
+                      });
+                      const data = await res.json();
+                      if (!res.ok) throw new Error(data.message || 'Failed to stake');
+                      setArbiterResult({ success: true, message: `Arbiter stake deposited! Eligible: ${data.arbiterEligible}` });
+                      setTimeout(() => { setArbiterAgent(null); window.location.reload(); }, 2000);
+                    } catch (err: unknown) {
+                      setArbiterResult({ success: false, message: err instanceof Error ? err.message : 'Unknown error' });
+                    } finally {
+                      setArbiterLoading(false);
+                    }
+                  }}
+                  className="flex-1 px-4 py-3 rounded-lg bg-[#8259ef] hover:bg-[#7048d6] text-white text-sm font-medium transition-colors disabled:opacity-50"
+                >
+                  {arbiterLoading ? 'Staking...' : 'Confirm Stake'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 }

@@ -594,12 +594,12 @@ export default function LandingPage() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-12 max-w-[700px] mx-auto">
             {/* Firas */}
             <div className="flex flex-col items-center text-center group">
-              <div className="relative mb-6">
-                <div className="w-52 h-52 rounded-full bg-gradient-to-br from-[#8259ef]/30 to-[#b47aff]/10 absolute top-10 left-1/2 -translate-x-1/2" />
+              <div className="relative mb-6 h-[280px] flex items-end justify-center">
+                <div className="w-52 h-52 rounded-full bg-gradient-to-br from-[#8259ef]/30 to-[#b47aff]/10 absolute bottom-6 left-1/2 -translate-x-1/2" />
                 <img
                   src="https://res.cloudinary.com/dhbol6euq/image/upload/v1773818762/6e277554-47b2-4cc3-957e-6c4f8adfa350_removalai_preview_igoduj.png"
                   alt="Firas Belhiba"
-                  className="relative z-10 w-64 h-72 object-contain object-bottom"
+                  className="relative z-10 w-60 h-[270px] object-contain object-bottom"
                 />
               </div>
               <h3 className="text-[20px] text-white font-medium mb-1">Firas Belhiba</h3>
@@ -619,12 +619,12 @@ export default function LandingPage() {
 
             {/* Olfa */}
             <div className="flex flex-col items-center text-center group">
-              <div className="relative mb-6">
-                <div className="w-52 h-52 rounded-full bg-gradient-to-br from-[#8259ef]/30 to-[#b47aff]/10 absolute top-10 left-1/2 -translate-x-1/2" />
+              <div className="relative mb-6 h-[280px] flex items-end justify-center">
+                <div className="w-52 h-52 rounded-full bg-gradient-to-br from-[#8259ef]/30 to-[#b47aff]/10 absolute bottom-6 left-1/2 -translate-x-1/2" />
                 <img
                   src="https://res.cloudinary.com/dhbol6euq/image/upload/v1773818763/59a9a6df-96ff-44ce-9f2f-e459625e2186_removalai_preview_p2wr2b.png"
                   alt="Olfa Selmi"
-                  className="relative z-10 w-56 h-64 object-contain object-bottom"
+                  className="relative z-10 w-60 h-[270px] object-contain object-bottom"
                 />
               </div>
               <h3 className="text-[20px] text-white font-medium mb-1">Olfa Selmi</h3>
