@@ -784,8 +784,7 @@ export default function AgentDetailPage({
                             const apiKey = agent?.apiKey;
                             if (!apiKey) { alert('Could not retrieve agent API key'); return; }
                             try {
-                              const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api';
-                              const res = await fetch(`${API}/staking/arbiter/stake`, {
+                              const res = await fetch(`${API_URL}/api/staking/arbiter/stake`, {
                                 method: 'POST',
                                 headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey },
                                 body: JSON.stringify({ amount }),

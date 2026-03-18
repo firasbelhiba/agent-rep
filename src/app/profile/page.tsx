@@ -554,8 +554,7 @@ export default function ProfilePage() {
                     if (amount < 10) { setArbiterResult({ success: false, message: 'Minimum stake is 10 HBAR' }); return; }
                     setArbiterLoading(true);
                     try {
-                      const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api';
-                      const res = await fetch(`${API}/staking/arbiter/stake`, {
+                      const res = await fetch(`${API_URL}/api/staking/arbiter/stake`, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json', 'x-api-key': agent.apiKey },
                         body: JSON.stringify({ amount }),
