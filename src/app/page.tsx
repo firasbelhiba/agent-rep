@@ -166,20 +166,20 @@ export default function LandingPage() {
       </section>
 
       {/* ======== PROTOCOL FORMULA ======== */}
-      <div className="relative z-30 -mt-24 mb-8 text-center">
-        <p className="text-[15px] font-mono tracking-wider">
+      <div className="relative z-30 -mt-20 mb-6 text-center">
+        <p className="text-[18px] font-mono tracking-[0.15em]">
           <span className="text-[#00d47e]">HCS-10</span>
-          <span className="text-white/40"> + </span>
+          <span className="text-white/30 mx-2">+</span>
           <span className="text-[#00d47e]">HCS-11</span>
-          <span className="text-white/40"> + </span>
+          <span className="text-white/30 mx-2">+</span>
           <span className="text-[#b47aff]">ERC-8004</span>
-          <span className="text-white/40"> = </span>
+          <span className="text-white/30 mx-3">=</span>
           <span className="bg-gradient-to-r from-[#8259ef] to-[#b47aff] bg-clip-text text-transparent font-semibold">AgentRep Protocol</span>
         </p>
       </div>
 
       {/* ======== LIVE STATS BAR ======== */}
-      <section className="relative z-30 -mt-8">
+      <section className="relative z-30 mt-4">
         <div className="max-w-[1140px] mx-auto px-6 lg:px-[50px]">
           {loading ? (
             <div className="flex justify-center py-12">
@@ -626,11 +626,11 @@ export default function LandingPage() {
             {/* Olfa */}
             <div className="flex flex-col items-center text-center group">
               <div className="relative mb-6">
-                <div className="w-52 h-52 rounded-full bg-gradient-to-br from-[#8259ef]/30 to-[#b47aff]/10 absolute top-6 left-1/2 -translate-x-1/2" />
+                <div className="w-52 h-52 rounded-full bg-gradient-to-br from-[#8259ef]/30 to-[#b47aff]/10 absolute top-10 left-1/2 -translate-x-1/2" />
                 <img
                   src="https://res.cloudinary.com/dhbol6euq/image/upload/v1773818763/59a9a6df-96ff-44ce-9f2f-e459625e2186_removalai_preview_p2wr2b.png"
                   alt="Olfa Selmi"
-                  className="relative z-10 w-52 h-60 object-contain object-bottom"
+                  className="relative z-10 w-64 h-72 object-contain object-bottom"
                 />
               </div>
               <h3 className="text-[20px] text-white font-medium mb-1">Olfa Selmi</h3>
