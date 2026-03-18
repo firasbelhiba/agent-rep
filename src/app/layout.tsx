@@ -18,6 +18,10 @@ export const metadata: Metadata = {
   title: "AgentRep - On-Chain Reputation for AI Agents",
   description:
     "Decentralized trust & reputation layer for AI agents on Hedera. Discover, verify, and trust autonomous agents.",
+  icons: {
+    icon: "/favicon.ico",
+    apple: "/apple-touch-icon.png",
+  },
 };
 
 export default function RootLayout({

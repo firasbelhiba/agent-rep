@@ -514,7 +514,28 @@ function sleep(ms: number): Promise<void> {
 
 async function runDemo() {
   console.clear();
-  printHeader("AgentRep  --  On-Chain Reputation for AI Agents on Hedera");
+  console.log(`${C.bold}${C.magenta}`);
+  console.log(`    ╔══════════════════════════════════════════════════════════════════╗`);
+  console.log(`    ║                                                                  ║`);
+  console.log(`    ║      █████╗  ██████╗ ███████╗███╗   ██╗████████╗                 ║`);
+  console.log(`    ║     ██╔══██╗██╔════╝ ██╔════╝████╗  ██║╚══██╔══╝                 ║`);
+  console.log(`    ║     ███████║██║  ███╗█████╗  ██╔██╗ ██║   ██║                    ║`);
+  console.log(`    ║     ██╔══██║██║   ██║██╔══╝  ██║╚██╗██║   ██║                    ║`);
+  console.log(`    ║     ██║  ██║╚██████╔╝███████╗██║ ╚████║   ██║                    ║`);
+  console.log(`    ║     ╚═╝  ╚═╝ ╚═════╝ ╚══════╝╚═╝  ╚═══╝   ╚═╝                    ║`);
+  console.log(`    ║                                                                  ║`);
+  console.log(`    ║     ██████╗ ███████╗██████╗                                      ║`);
+  console.log(`    ║     ██╔══██╗██╔════╝██╔══██╗                                     ║`);
+  console.log(`    ║     ██████╔╝█████╗  ██████╔╝                                     ║`);
+  console.log(`    ║     ██╔══██╗██╔══╝  ██╔═══╝                                      ║`);
+  console.log(`    ║     ██║  ██║███████╗██║                                           ║`);
+  console.log(`    ║     ╚═╝  ╚═╝╚══════╝╚═╝                                           ║`);
+  console.log(`    ║                                                                  ║`);
+  console.log(`    ║  ${C.cyan}On-Chain Reputation for AI Agents${C.magenta}                               ║`);
+  console.log(`    ║  ${C.white}Demo Simulation — Hedera Testnet${C.magenta}                                ║`);
+  console.log(`    ║                                                                  ║`);
+  console.log(`    ╚══════════════════════════════════════════════════════════════════╝${C.reset}`);
+  console.log();
   console.log(`  ${C.dim}Simulated HCS Topic: 0.0.5432100${C.reset}`);
   console.log(`  ${C.dim}Network: Hedera Testnet (simulated)${C.reset}`);
   console.log(`  ${C.dim}Timestamp: ${new Date().toISOString()}${C.reset}`);

@@ -26,10 +26,33 @@ function ask(prompt) {
 }
 
 function banner() {
-  console.log('\n┌────────────────────────────────────────────────┐');
-  console.log('│      AgentRep — Agent Listener (HCS-10)        │');
-  console.log('│      Autonomous message responder               │');
-  console.log('└────────────────────────────────────────────────┘\n');
+  const M = '\x1b[35m';  // magenta
+  const C = '\x1b[36m';  // cyan
+  const W = '\x1b[37m';  // white
+  const B = '\x1b[1m';   // bold
+  const R = '\x1b[0m';   // reset
+  console.log();
+  console.log(`${B}${M}    ╔══════════════════════════════════════════════════════════════════╗`);
+  console.log(`    ║                                                                  ║`);
+  console.log(`    ║      █████╗  ██████╗ ███████╗███╗   ██╗████████╗                 ║`);
+  console.log(`    ║     ██╔══██╗██╔════╝ ██╔════╝████╗  ██║╚══██╔══╝                 ║`);
+  console.log(`    ║     ███████║██║  ███╗█████╗  ██╔██╗ ██║   ██║                    ║`);
+  console.log(`    ║     ██╔══██║██║   ██║██╔══╝  ██║╚██╗██║   ██║                    ║`);
+  console.log(`    ║     ██║  ██║╚██████╔╝███████╗██║ ╚████║   ██║                    ║`);
+  console.log(`    ║     ╚═╝  ╚═╝ ╚═════╝ ╚══════╝╚═╝  ╚═══╝   ╚═╝                    ║`);
+  console.log(`    ║                                                                  ║`);
+  console.log(`    ║     ██████╗ ███████╗██████╗                                      ║`);
+  console.log(`    ║     ██╔══██╗██╔════╝██╔══██╗                                     ║`);
+  console.log(`    ║     ██████╔╝█████╗  ██████╔╝                                     ║`);
+  console.log(`    ║     ██╔══██╗██╔══╝  ██╔═══╝                                      ║`);
+  console.log(`    ║     ██║  ██║███████╗██║                                           ║`);
+  console.log(`    ║     ╚═╝  ╚═╝╚══════╝╚═╝                                           ║`);
+  console.log(`    ║                                                                  ║`);
+  console.log(`    ║  ${C}Agent Listener — HCS-10 Autonomous Responder${M}                  ║`);
+  console.log(`    ║  ${W}Powered by agent-rep-sdk${M}                                       ║`);
+  console.log(`    ║                                                                  ║`);
+  console.log(`    ╚══════════════════════════════════════════════════════════════════╝${R}`);
+  console.log();
 }
 
 function timestamp() {

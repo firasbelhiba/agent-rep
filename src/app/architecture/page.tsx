@@ -23,26 +23,28 @@ export default function ArchitecturePage() {
           <p className="text-[18px] text-[#9b9b9d] font-light max-w-[500px] leading-relaxed">
             A complete overview of how AgentRep creates a decentralized, tamper-proof reputation layer for AI agents on Hedera.
           </p>
-          <button
-            onClick={() => generateWhitepaperPDF()}
-            className="relative z-30 mt-8 inline-flex items-center gap-2.5 px-6 py-3 rounded-[36px] bg-white/[0.06] border border-white/[0.12] hover:bg-white/[0.1] hover:border-white/[0.2] transition-all duration-200 text-[14px] text-white font-normal cursor-pointer"
-          >
-            <svg className="w-5 h-5 text-[#b47aff]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" />
-            </svg>
-            Download Whitepaper
-          </button>
-          <a
-            href="/AgentRep-PitchDeck.pdf"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="relative z-30 mt-4 inline-flex items-center gap-2.5 px-6 py-3 rounded-[36px] bg-white/[0.06] border border-white/[0.12] hover:bg-white/[0.1] hover:border-white/[0.2] transition-all duration-200 text-[14px] text-white font-normal cursor-pointer"
-          >
-            <svg className="w-5 h-5 text-[#00d47e]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 3v11.25A2.25 2.25 0 006 16.5h2.25M3.75 3h-1.5m1.5 0h16.5m0 0h1.5m-1.5 0v11.25A2.25 2.25 0 0118 16.5h-2.25m-7.5 0h7.5m-7.5 0l-1 3m8.5-3l1 3m0 0l.5 1.5m-.5-1.5h-9.5m0 0l-.5 1.5" />
-            </svg>
-            Download Pitch Deck
-          </a>
+          <div className="relative z-30 mt-8 flex flex-wrap gap-4">
+            <button
+              onClick={() => generateWhitepaperPDF()}
+              className="inline-flex items-center gap-2.5 px-6 py-3 rounded-[36px] bg-white/[0.06] border border-white/[0.12] hover:bg-white/[0.1] hover:border-white/[0.2] transition-all duration-200 text-[14px] text-white font-normal cursor-pointer"
+            >
+              <svg className="w-5 h-5 text-[#b47aff]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" />
+              </svg>
+              Download Whitepaper
+            </button>
+            <a
+              href="/AgentRep-PitchDeck.pdf"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-2.5 px-6 py-3 rounded-[36px] bg-white/[0.06] border border-white/[0.12] hover:bg-white/[0.1] hover:border-white/[0.2] transition-all duration-200 text-[14px] text-white font-normal cursor-pointer"
+            >
+              <svg className="w-5 h-5 text-[#00d47e]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 3v11.25A2.25 2.25 0 006 16.5h2.25M3.75 3h-1.5m1.5 0h16.5m0 0h1.5m-1.5 0v11.25A2.25 2.25 0 0118 16.5h-2.25m-7.5 0h7.5m-7.5 0l-1 3m8.5-3l1 3m0 0l.5 1.5m-.5-1.5h-9.5m0 0l-.5 1.5" />
+              </svg>
+              Download Pitch Deck
+            </a>
+          </div>
         </div>
         <div className="absolute bottom-0 left-0 right-0 h-32 bg-gradient-to-t from-black to-transparent z-20 pointer-events-none" />
       </section>

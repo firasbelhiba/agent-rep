@@ -449,7 +449,7 @@ export default function AgentDetailPage({
                           value={reviewTag}
                           onChange={(e) => setReviewTag(e.target.value)}
                           required
-                          className="w-full bg-white/[0.03] border border-white/10 rounded-xl px-3 py-2.5 text-sm text-white focus:outline-none focus:border-[#8259ef]/50"
+                          className="w-full bg-[#0a0a1a] border border-white/10 rounded-xl px-3 py-2.5 text-sm text-white focus:outline-none focus:border-[#8259ef]/50 [&>option]:bg-[#0a0a1a] [&>option]:text-white"
                         >
                           <option value="">Select a category...</option>
                           {(agent?.skills || []).map((skill) => (
