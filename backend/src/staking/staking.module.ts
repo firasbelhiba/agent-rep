@@ -6,6 +6,7 @@ import { StakingService } from './staking.service';
 import { StakingController } from './staking.controller';
 import { StakingContractService } from '../hedera/staking-contract.service';
 import { HederaConfigService } from '../hedera/hedera-config.service';
+import { HCS10Service } from '../hedera/hcs10.service';
 import { AgentsModule } from '../agents/agents.module';
 import { FeedbackModule } from '../feedback/feedback.module';
 
@@ -16,7 +17,7 @@ import { FeedbackModule } from '../feedback/feedback.module';
     forwardRef(() => FeedbackModule),
   ],
   controllers: [StakingController],
-  providers: [StakingService, StakingContractService, HederaConfigService],
+  providers: [StakingService, StakingContractService, HederaConfigService, HCS10Service],
   exports: [StakingService],
 })
 export class StakingModule {}

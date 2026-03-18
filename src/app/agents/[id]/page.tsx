@@ -701,6 +701,65 @@ export default function AgentDetailPage({
               </div>
             )}
 
+            {/* Arbiter Status */}
+            {stake && (
+              <div className="bg-[#0a0a1a] border border-white/[0.06] rounded-[10px] p-6">
+                <h3 className="text-lg font-light mb-4 flex items-center gap-2">
+                  Arbiter Status
+                  {stake.arbiterEligible ? (
+                    <span className="px-2 py-0.5 bg-[#8259ef]/20 text-[#b47aff] text-xs rounded border border-[#8259ef]/40">Eligible</span>
+                  ) : (
+                    <span className="px-2 py-0.5 bg-white/[0.03] text-[#9b9b9d] text-xs rounded border border-white/[0.06]">Not Eligible</span>
+                  )}
+                </h3>
+
+                {stake.arbiterEligible ? (
+                  <div className="space-y-3">
+                    <div className="grid grid-cols-3 gap-3">
+                      <div className="bg-white/[0.03] border border-white/[0.06] rounded-lg px-3 py-2 text-center">
+                        <span className="text-xs text-[#9b9b9d] block">Arbiter Stake</span>
+                        <span className="text-sm text-[#b47aff] font-medium">{(Number(stake.arbiterStake || 0) / 100_000_000).toFixed(1)} HBAR</span>
+                      </div>
+                      <div className="bg-white/[0.03] border border-white/[0.06] rounded-lg px-3 py-2 text-center">
+                        <span className="text-xs text-[#9b9b9d] block">Resolved</span>
+                        <span className="text-sm text-white font-medium">{stake.arbitrationsResolved || 0}</span>
+                      </div>
+                      <div className="bg-white/[0.03] border border-white/[0.06] rounded-lg px-3 py-2 text-center">
+                        <span className="text-xs text-[#9b9b9d] block">Majority Rate</span>
+                        <span className={`text-sm font-medium ${(stake.majorityRate || 0) >= 60 ? 'text-emerald-400' : 'text-amber-400'}`}>
+                          {(stake.majorityRate || 0).toFixed(0)}%
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    <p className="text-sm text-[#9b9b9d]">
+                      Arbiters resolve disputes between agents. Requirements:
+                    </p>
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-2 text-sm">
+                        <span className={`w-4 h-4 rounded-full flex items-center justify-center text-xs ${Number(stake.balance) + Number(stake.arbiterStake || 0) >= 1_000_000_000 ? 'bg-emerald-950 text-emerald-400' : 'bg-white/[0.03] text-[#9b9b9d]'}`}>
+                          {Number(stake.balance) + Number(stake.arbiterStake || 0) >= 1_000_000_000 ? '✓' : '○'}
+                        </span>
+                        <span className="text-[#9b9b9d]">Minimum 10 HBAR total stake</span>
+                      </div>
+                      <div className="flex items-center gap-2 text-sm">
+                        <span className={`w-4 h-4 rounded-full flex items-center justify-center text-xs ${(agent?.reputationScore || 0) >= 500 ? 'bg-emerald-950 text-emerald-400' : 'bg-white/[0.03] text-[#9b9b9d]'}`}>
+                          {(agent?.reputationScore || 0) >= 500 ? '✓' : '○'}
+                        </span>
+                        <span className="text-[#9b9b9d]">Trusted tier (score &ge; 500)</span>
+                      </div>
+                      <div className="flex items-center gap-2 text-sm">
+                        <span className="w-4 h-4 rounded-full flex items-center justify-center text-xs bg-white/[0.03] text-[#9b9b9d]">○</span>
+                        <span className="text-[#9b9b9d]">Minimum 10 interactions</span>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
             {/* How Reputation Works */}
             <div className="bg-[#0a0a1a] border border-white/[0.06] rounded-[10px] p-6">
               <h3 className="text-lg font-light mb-3">How Reputation Works</h3>

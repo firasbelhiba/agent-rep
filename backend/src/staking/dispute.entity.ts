@@ -21,11 +21,27 @@ export class DisputeEntity {
   @Column({ type: 'text' })
   reason: string;
 
-  // 'pending' | 'upheld' (slash applied) | 'dismissed'
+  // 'pending' | 'voting' | 'upheld' | 'dismissed'
   @Column({ default: 'pending' })
   status: string;
 
-  // Who resolved the dispute (another agent acting as arbiter)
+  // Dispute bond amount in tinybars (2 HBAR = 200_000_000)
+  @Column({ name: 'bond_amount', type: 'bigint', default: 200_000_000 })
+  bondAmount: number;
+
+  // Selected arbiter agent IDs (JSON array of 3)
+  @Column({ name: 'selected_arbiters', type: 'text', nullable: true })
+  selectedArbiters?: string; // JSON: ["agentId1", "agentId2", "agentId3"]
+
+  // Arbiter votes (JSON object)
+  @Column({ name: 'arbiter_votes', type: 'text', nullable: true })
+  arbiterVotes?: string; // JSON: { "agentId1": { "vote": "upheld", "reasoning": "...", "timestamp": 123 } }
+
+  // Deadline for arbiter responses (48h from creation)
+  @Column({ name: 'voting_deadline', type: 'bigint', nullable: true })
+  votingDeadline?: number;
+
+  // Who resolved the dispute (system after majority vote)
   @Column({ name: 'resolved_by', nullable: true })
   resolvedBy?: string;
 
@@ -45,4 +61,23 @@ export class DisputeEntity {
 
   @Column({ name: 'hcs_sequence_number', nullable: true })
   hcsSequenceNumber?: string;
+
+  // Helper methods
+  getSelectedArbiters(): string[] {
+    return this.selectedArbiters ? JSON.parse(this.selectedArbiters) : [];
+  }
+
+  getArbiterVotes(): Record<string, { vote: string; reasoning: string; timestamp: number }> {
+    return this.arbiterVotes ? JSON.parse(this.arbiterVotes) : {};
+  }
+
+  setSelectedArbiters(arbiters: string[]) {
+    this.selectedArbiters = JSON.stringify(arbiters);
+  }
+
+  setArbiterVote(arbiterId: string, vote: string, reasoning: string) {
+    const votes = this.getArbiterVotes();
+    votes[arbiterId] = { vote, reasoning, timestamp: Date.now() };
+    this.arbiterVotes = JSON.stringify(votes);
+  }
 }

@@ -10,12 +10,15 @@ import {
   Logger,
 } from '@nestjs/common';
 import * as crypto from 'crypto';
-import { StakingService, MIN_STAKE_TO_FEEDBACK, SLASH_PERCENT } from './staking.service';
+import { StakingService, MIN_STAKE_TO_FEEDBACK, SLASH_PERCENT, DISPUTE_BOND, ARBITER_TIMEOUT_MS } from './staking.service';
 import { AgentsService } from '../agents/agents.service';
 import { FeedbackService } from '../feedback/feedback.service';
 import { HCSService, HCSMessageType } from '../hedera/hcs.service';
+import { HCS10Service } from '../hedera/hcs10.service';
 import { HederaConfigService } from '../hedera/hedera-config.service';
 import { SystemConfigService } from '../config/system-config.service';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
 
 @Controller('staking')
 export class StakingController {
@@ -26,6 +29,7 @@ export class StakingController {
     private readonly agentsService: AgentsService,
     private readonly feedbackService: FeedbackService,
     private readonly hcsService: HCSService,
+    private readonly hcs10Service: HCS10Service,
     private readonly hederaConfig: HederaConfigService,
     private readonly systemConfig: SystemConfigService,
   ) {}
@@ -198,6 +202,32 @@ export class StakingController {
         feedback.fromAgentId,
         body.reason,
       );
+
+      // If dispute entered voting phase, notify selected arbiters via HCS-10
+      if (dispute.status === 'voting' && dispute.getSelectedArbiters().length > 0) {
+        const arbiterIds = dispute.getSelectedArbiters();
+        const rewardPerArbiter = Math.floor(DISPUTE_BOND / arbiterIds.length);
+
+        // Fire and forget — don't block dispute creation on notification
+        this.hcs10Service.notifyArbiters(
+          arbiterIds,
+          {
+            disputeId: dispute.id,
+            feedbackId: dispute.feedbackId,
+            accusedId: dispute.accusedId,
+            disputerId: dispute.disputerId,
+            reason: dispute.reason,
+            deadline: dispute.votingDeadline!,
+            rewardAmount: rewardPerArbiter,
+          },
+          { findOne: (opts: any) => this.agentsService.findById(opts?.where?.agentId) },
+        ).then(result => {
+          this.logger.log(`Arbiter notifications for dispute #${dispute.id}: ${result.sent.length} sent, ${result.failed.length} failed`);
+        }).catch(err => {
+          this.logger.error(`Failed to notify arbiters for dispute #${dispute.id}: ${err.message}`);
+        });
+      }
+
       return { dispute };
     } catch (e) {
       throw new HttpException(e.message, HttpStatus.CONFLICT);
@@ -291,5 +321,109 @@ export class StakingController {
         balanceHbar: Number(s.balance) / 100_000_000,
       })),
     };
+  }
+
+  // ---- Arbiter Endpoints ----
+
+  /** Stake as arbiter (requires 10 HBAR minimum) */
+  @Post('arbiter/stake')
+  async stakeAsArbiter(
+    @Headers('x-api-key') apiKey: string,
+    @Body() body: { amount: number },
+  ) {
+    try {
+      const agent = await this.authenticateAgent(apiKey);
+      const stake = await this.stakingService.stakeAsArbiter(agent.agentId, body.amount);
+      return {
+        message: 'Arbiter stake deposited',
+        arbiterEligible: stake.arbiterEligible,
+        arbiterStake: Number(stake.arbiterStake) / 100_000_000,
+        totalStake: (Number(stake.balance) + Number(stake.arbiterStake)) / 100_000_000,
+      };
+    } catch (e) {
+      throw new HttpException(e.message, HttpStatus.BAD_REQUEST);
+    }
+  }
+
+  /** Check arbiter eligibility */
+  @Get('arbiter/eligibility/:agentId')
+  async checkArbiterEligibility(@Param('agentId') agentId: string) {
+    const stake = await this.stakingService.getStake(agentId);
+    const totalStake = Number(stake.balance) + Number(stake.arbiterStake || 0);
+    return {
+      agentId,
+      arbiterEligible: stake.arbiterEligible,
+      arbiterStake: Number(stake.arbiterStake || 0) / 100_000_000,
+      totalStake: totalStake / 100_000_000,
+      arbitrationsResolved: stake.arbitrationsResolved || 0,
+      majorityRate: stake.majorityRate || 0,
+      requirements: {
+        minStake: '10 HBAR',
+        minScore: 500,
+        minInteractions: 10,
+      },
+    };
+  }
+
+  /** List eligible arbiters */
+  @Get('arbiters')
+  async getArbiters() {
+    const arbiters = await this.stakingService.getEligibleArbiters();
+    return {
+      count: arbiters.length,
+      arbiters: arbiters.map(a => ({
+        agentId: a.agentId,
+        arbiterStake: Number(a.arbiterStake || 0) / 100_000_000,
+        arbitrationsResolved: a.arbitrationsResolved || 0,
+        majorityRate: a.majorityRate || 0,
+      })),
+    };
+  }
+
+  /** Submit arbiter vote on a dispute */
+  @Post('dispute/:id/vote')
+  async submitArbiterVote(
+    @Headers('x-api-key') apiKey: string,
+    @Param('id') disputeId: number,
+    @Body() body: { vote: 'upheld' | 'dismissed'; reasoning: string },
+  ) {
+    try {
+      const arbiter = await this.authenticateAgent(apiKey);
+
+      // Verify arbiter eligibility
+      const stake = await this.stakingService.getStake(arbiter.agentId);
+      if (!stake.arbiterEligible) {
+        throw new Error('You are not eligible to serve as arbiter');
+      }
+
+      const { dispute, finalized, slashedStake, txId } = await this.stakingService.submitArbiterVote(
+        disputeId,
+        arbiter.agentId,
+        body.vote,
+        body.reasoning,
+      );
+
+      const network = process.env.HEDERA_NETWORK || 'testnet';
+      return {
+        message: finalized ? `Dispute ${dispute.status} by majority vote` : 'Vote recorded, waiting for more votes',
+        dispute: {
+          id: dispute.id,
+          status: dispute.status,
+          votes: dispute.getArbiterVotes(),
+          selectedArbiters: dispute.getSelectedArbiters(),
+        },
+        finalized,
+        ...(slashedStake && {
+          slashedAgent: dispute.accusedId,
+          remainingStake: Number(slashedStake.balance) / 100_000_000,
+        }),
+        ...(txId && {
+          contractTxId: txId,
+          hashScanUrl: `https://hashscan.io/${network}/transaction/${txId}`,
+        }),
+      };
+    } catch (e) {
+      throw new HttpException(e.message, HttpStatus.BAD_REQUEST);
+    }
   }
 }

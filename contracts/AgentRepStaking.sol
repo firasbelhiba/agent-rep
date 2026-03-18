@@ -158,6 +158,91 @@ contract AgentRepStaking {
     }
 
     // ============================================
+    // Arbiter Staking
+    // ============================================
+
+    // Arbiter stakes (separate from regular agent stakes)
+    mapping(bytes32 => uint256) public arbiterStakes;
+    uint256 public constant MIN_ARBITER_STAKE = 10 * 1e8; // 10 HBAR
+
+    // Dispute bonds
+    mapping(uint256 => uint256) public disputeBonds; // disputeId => bond amount
+    uint256 public constant DISPUTE_BOND_AMOUNT = 2 * 1e8; // 2 HBAR
+
+    event ArbiterStaked(bytes32 indexed agentId, uint256 amount);
+    event DisputeBondDeposited(uint256 indexed disputeId, bytes32 indexed disputerId, uint256 amount);
+    event DisputeBondReturned(uint256 indexed disputeId, bytes32 indexed disputerId, uint256 amount);
+    event DisputeBondForfeited(uint256 indexed disputeId, bytes32 indexed accusedId, uint256 amount);
+    event ArbiterRewarded(bytes32 indexed arbiterId, uint256 amount);
+
+    /**
+     * @notice Stake additional HBAR as arbiter collateral.
+     * @param agentId The agent becoming an arbiter.
+     */
+    function stakeAsArbiter(bytes32 agentId) external payable onlyOracle {
+        require(msg.value >= MIN_ARBITER_STAKE, "Below minimum arbiter stake");
+        arbiterStakes[agentId] += msg.value;
+        totalStaked += msg.value;
+        emit ArbiterStaked(agentId, msg.value);
+    }
+
+    /**
+     * @notice Deposit dispute bond when filing a dispute.
+     * @param disputeId Unique dispute identifier.
+     * @param disputerId The agent filing the dispute.
+     */
+    function depositDisputeBond(uint256 disputeId, bytes32 disputerId) external payable onlyOracle {
+        require(msg.value >= DISPUTE_BOND_AMOUNT, "Below minimum bond");
+        require(disputeBonds[disputeId] == 0, "Bond already deposited");
+        disputeBonds[disputeId] = msg.value;
+        emit DisputeBondDeposited(disputeId, disputerId, msg.value);
+    }
+
+    /**
+     * @notice Return dispute bond to disputer (dispute was upheld).
+     * @param disputeId The dispute whose bond to return.
+     */
+    function returnDisputeBond(uint256 disputeId, bytes32 disputerId) external onlyOracle {
+        uint256 bond = disputeBonds[disputeId];
+        require(bond > 0, "No bond found");
+        disputeBonds[disputeId] = 0;
+        (bool success, ) = msg.sender.call{value: bond}("");
+        require(success, "Transfer failed");
+        emit DisputeBondReturned(disputeId, disputerId, bond);
+    }
+
+    /**
+     * @notice Forfeit dispute bond to accused (dispute was dismissed).
+     * @param disputeId The dispute whose bond to forfeit.
+     * @param accusedId The agent receiving the forfeited bond.
+     */
+    function forfeitDisputeBond(uint256 disputeId, bytes32 accusedId) external onlyOracle {
+        uint256 bond = disputeBonds[disputeId];
+        require(bond > 0, "No bond found");
+        disputeBonds[disputeId] = 0;
+        // Bond goes to contract balance for redistribution
+        emit DisputeBondForfeited(disputeId, accusedId, bond);
+    }
+
+    /**
+     * @notice Reward an arbiter for participating in dispute resolution.
+     * @param arbiterId The arbiter to reward.
+     * @param amount The reward amount in tinybar.
+     */
+    function rewardArbiter(bytes32 arbiterId, uint256 amount) external onlyOracle {
+        require(amount > 0, "Zero reward");
+        uint256 available = address(this).balance - totalStaked;
+        require(amount <= available, "Insufficient funds for reward");
+        (bool success, ) = msg.sender.call{value: amount}("");
+        require(success, "Transfer failed");
+        emit ArbiterRewarded(arbiterId, amount);
+    }
+
+    function getArbiterStake(bytes32 agentId) external view returns (uint256) {
+        return arbiterStakes[agentId];
+    }
+
+    // ============================================
     // View Functions
     // ============================================
 

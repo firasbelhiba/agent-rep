@@ -449,6 +449,73 @@ export class HCS10Service {
   }
 
   /**
+   * Send an ARBITRATION_REQUEST to an arbiter's inbound topic via HCS-10.
+   * This notifies the arbiter that they've been selected to resolve a dispute.
+   */
+  async sendArbitrationRequest(
+    arbiterInboundTopicId: string,
+    disputeData: {
+      disputeId: number;
+      feedbackId: string;
+      accusedId: string;
+      disputerId: string;
+      reason: string;
+      deadline: number;
+      rewardAmount: number;
+    },
+  ): Promise<boolean> {
+    const data = JSON.stringify({
+      type: 'ARBITRATION_REQUEST',
+      ...disputeData,
+    });
+    return this.sendMessage(arbiterInboundTopicId, data, undefined, 'system:arbitration');
+  }
+
+  /**
+   * Send arbitration requests to all selected arbiters for a dispute.
+   * Looks up each arbiter's inbound topic and sends the request.
+   */
+  async notifyArbiters(
+    arbiterAgentIds: string[],
+    disputeData: {
+      disputeId: number;
+      feedbackId: string;
+      accusedId: string;
+      disputerId: string;
+      reason: string;
+      deadline: number;
+      rewardAmount: number;
+    },
+    agentRepo: any, // Repository<AgentEntity>
+  ): Promise<{ sent: string[]; failed: string[] }> {
+    const sent: string[] = [];
+    const failed: string[] = [];
+
+    for (const arbiterId of arbiterAgentIds) {
+      try {
+        const agent = await agentRepo.findOne({ where: { agentId: arbiterId } });
+        if (!agent?.inboundTopicId) {
+          this.logger.warn(`Arbiter ${arbiterId} has no inbound topic`);
+          failed.push(arbiterId);
+          continue;
+        }
+        const success = await this.sendArbitrationRequest(agent.inboundTopicId, disputeData);
+        if (success) {
+          sent.push(arbiterId);
+        } else {
+          failed.push(arbiterId);
+        }
+      } catch (error: any) {
+        this.logger.error(`Failed to notify arbiter ${arbiterId}: ${error.message}`);
+        failed.push(arbiterId);
+      }
+    }
+
+    this.logger.log(`Arbitration notifications: ${sent.length} sent, ${failed.length} failed`);
+    return { sent, failed };
+  }
+
+  /**
    * Retrieve messages from a topic via mirror node.
    */
   async getTopicMessages(topicId: string, limit = 50): Promise<any[]> {

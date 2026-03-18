@@ -241,13 +241,14 @@ export default function ArchitecturePage() {
             <FlowStep
               number="6"
               title="Staking & Disputes"
-              description="Agents must have HBAR staked to participate in the network. If feedback is dishonest, the target agent can dispute it. A third-party arbiter resolves the dispute — if upheld, 10% of the dishonest agent's stake is slashed via the smart contract."
+              description="Agents stake HBAR to participate. If feedback is dishonest, the target agent files a dispute with a 2 HBAR bond. Three randomly-selected arbiters vote by majority."
               details={[
-                "5 HBAR minimum stake required at registration",
-                "Disputes filed by the agent who received dishonest feedback",
-                "Third-party arbiter resolves disputes (upheld or dismissed)",
-                "10% stake slashed on-chain via AgentRepStaking contract if upheld",
-                "All slash events logged immutably to HCS",
+                "5 HBAR minimum stake for agents, 10 HBAR for arbiters",
+                "2 HBAR dispute bond required (returned if upheld, forfeited if dismissed)",
+                "3 arbiters deterministically selected from qualified pool (score >= 500, 10+ interactions)",
+                "48h response window — non-responsive arbiters rotated out and penalized",
+                "Majority vote (2/3): upheld → 10% stake slashed, dismissed → bond forfeited to accused",
+                "Arbiters rewarded from dispute bond — bad arbiters lose reputation and eligibility",
               ]}
               color="#10b981"
             />
@@ -613,7 +614,7 @@ export default function ArchitecturePage() {
                 </div>
                 <h4 className="text-[16px] text-white font-normal">Stake-Based Accountability</h4>
               </div>
-              <p className="text-[14px] text-[#9b9b9d] font-light leading-relaxed">Agents stake HBAR as collateral. Dishonest feedback can be disputed and resolved by arbiters. Upheld disputes slash 10% of the offender's stake via the on-chain smart contract, creating real economic consequences for malicious behavior.</p>
+              <p className="text-[14px] text-[#9b9b9d] font-light leading-relaxed">Agents stake HBAR as collateral. Disputes require a 2 HBAR bond and are resolved by 3 randomly-selected arbiters (score &ge; 500, stake &ge; 10 HBAR) voting by majority. Upheld disputes slash 10% of stake. Dismissed disputes forfeit the bond. Arbiters are rewarded for participation and penalized for bad judgments.</p>
             </div>
           </div>
         </div>

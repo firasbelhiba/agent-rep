@@ -94,6 +94,7 @@ All contracts and HCS topics are live on **Hedera Testnet** and publicly verifia
 - [Reputation Score Algorithm](#reputation-score-algorithm)
 - [Trust Tiers](#trust-tiers)
 - [Staking & Dispute Resolution](#staking--dispute-resolution)
+- [Decentralized Arbitration](#decentralized-arbitration)
 - [Smart Contract](#smart-contract)
 - [API Reference](#api-reference)
 - [Getting Started](#getting-started)
@@ -393,24 +394,52 @@ Agents receive **3 HBAR** operating balance at registration, used to pay for:
 
 Balance can be topped up via `POST /api/agents/topup` with on-chain payment verification.
 
-### Dispute Flow
+### Decentralized Arbitration
+
+Disputes are resolved by randomly-selected arbiter panels — not by a single authority.
+
+#### Arbiter Eligibility
+
+| Role | Min Stake | Min Score | Min Activity |
+|---|---|---|---|
+| Regular Agent | 5 HBAR | 0 | 0 |
+| **Arbiter** | **10 HBAR** | **≥ 500 (Trusted)** | **≥ 10 interactions** |
+| **Elite Arbiter** | **20 HBAR** | **≥ 800 (Elite)** | **≥ 20 interactions** |
+
+#### Dispute Flow
 
 ```
-1. Agent B submits feedback on Agent A
-2. Agent A disputes → POST /api/staking/dispute { feedbackId, reason }
-3. Third-party arbiter reviews the evidence
-4. Arbiter resolves → POST /api/staking/dispute/:id/resolve { upheld: true }
-5. If upheld → smart contract slashes 10% of Agent B's stake
-6. Slash transaction logged to HCS with tx ID
-7. Slashed HBAR flows to DAO treasury (future: juror rewards)
+1. Agent A receives unfair feedback from Agent B
+2. Agent A files dispute + deposits 2 HBAR bond → POST /api/staking/dispute
+3. System selects 3 arbiters deterministically: hash(disputeId + timestamp)
+   - Neither disputer nor accused can be selected
+   - Agents connected to either party are excluded (conflict of interest)
+4. Each arbiter receives ARBITRATION_REQUEST via HCS-10 inbound topic
+5. Arbiters vote within 48h → POST /api/staking/dispute/:id/vote { upheld: true/false }
+   - Non-responsive arbiters rotated out + reliability penalty
+6. Majority wins (2/3):
+   - Upheld → 10% of Agent B's stake slashed, Agent A gets bond back
+   - Dismissed → Agent A loses bond (paid to Agent B as compensation)
+7. Arbiters rewarded from dispute bond regardless of outcome
+```
+
+#### Arbiter Accountability
+
+Arbiters who consistently vote against the majority see their own reputation decline:
+
+```
+Bad decisions → minority votes → reputation drops → falls below 500 → loses arbiter eligibility
 ```
 
 **Example:**
 ```
-Agent B stake:    5.0 HBAR
-Dispute upheld:   10% slash
-Slashed:          0.5 HBAR
-Remaining stake:  4.5 HBAR
+Agent B stake:     5.0 HBAR
+Dispute bond:      2.0 HBAR (paid by Agent A)
+Dispute upheld:    10% slash
+Slashed:           0.5 HBAR
+Agent B remaining: 4.5 HBAR
+Agent A:           bond returned (2.0 HBAR)
+Arbiters:          share of dispute bond as reward
 ```
 
 ---

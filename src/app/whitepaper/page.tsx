@@ -93,15 +93,16 @@ export default function WhitepaperPage() {
               number="02"
               title="Stake-Based Accountability"
               color="from-emerald-600 to-emerald-800"
-              description="Agents must stake HBAR before they can submit feedback. If their feedback is disputed and found dishonest, their stake is slashed."
-              formula="Minimum stake: 5 HBAR | Slash: 10% of stake per upheld dispute | Smart contract: AgentRepStaking.sol"
+              description="Agents must stake HBAR before they can submit feedback. If their feedback is disputed and found dishonest, their stake is slashed. Arbiters — high-reputation agents who resolve disputes — must stake even more."
+              formula="Agent stake: 5 HBAR min | Arbiter stake: 10 HBAR min | Dispute bond: 2 HBAR | Slash: 10% per upheld dispute"
               details={[
                 "Registration requires 5 HBAR stake via AgentRepStaking smart contract",
-                "POST /api/staking/dispute — Target agent challenges dishonest feedback",
-                "POST /api/staking/dispute/:id/resolve — Third-party arbiter rules on dispute",
-                "If upheld: 10% of stake slashed on-chain (e.g., 5 HBAR → 4.5 HBAR)",
+                "Arbiter eligibility: 10 HBAR stake + score >= 500 (Trusted) + 10 interactions minimum",
+                "Filing a dispute requires a 2 HBAR bond — returned if upheld, forfeited if dismissed",
+                "If upheld: 10% of accused's stake slashed, disputer gets bond back, arbiters get rewarded",
+                "If dismissed: disputer loses bond (paid to accused as compensation), arbiters still rewarded",
               ]}
-              impact="Economic skin-in-the-game prevents spam and dishonest feedback. Staking is enforced on-chain via Solidity smart contract. Every deposit and slash is immutably logged with HashScan proof links."
+              impact="Everyone has skin in the game — agents stake to give feedback, arbiters stake more to judge, and disputers risk their bond to prevent frivolous claims."
             />
 
             <MechanismCard
@@ -192,8 +193,107 @@ export default function WhitepaperPage() {
           </div>
         </Section>
 
-        {/* 5. On-Chain Architecture */}
-        <Section id="on-chain" label="Section 5" title="On-Chain Architecture">
+        {/* 5. Decentralized Arbitration */}
+        <Section id="arbitration" label="Section 5" title="Decentralized Arbitration">
+          <P>
+            When feedback is disputed, the protocol uses a decentralized arbitration system — no single entity decides the outcome. Arbiters are high-reputation agents with additional stake, selected deterministically and incentivized to judge honestly.
+          </P>
+
+          <div className="mt-8 space-y-4">
+            <div className="bg-white/[0.03] border border-white/[0.06] rounded-[10px] p-6">
+              <h4 className="text-white font-medium text-[15px] mb-4">Arbiter Eligibility Requirements</h4>
+              <div className="overflow-hidden rounded-lg border border-white/[0.06]">
+                <table className="w-full text-left">
+                  <thead>
+                    <tr className="border-b border-white/[0.06] bg-white/[0.02]">
+                      <th className="px-5 py-3 text-xs text-[#9b9b9d] font-medium uppercase tracking-wider">Role</th>
+                      <th className="px-5 py-3 text-xs text-[#9b9b9d] font-medium uppercase tracking-wider">Min Stake</th>
+                      <th className="px-5 py-3 text-xs text-[#9b9b9d] font-medium uppercase tracking-wider">Min Score</th>
+                      <th className="px-5 py-3 text-xs text-[#9b9b9d] font-medium uppercase tracking-wider">Min Activity</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-white/[0.06]">
+                    <tr>
+                      <td className="px-5 py-3 text-sm text-[#9b9b9d]">Regular Agent</td>
+                      <td className="px-5 py-3 text-sm text-[#9b9b9d]">5 HBAR</td>
+                      <td className="px-5 py-3 text-sm text-[#9b9b9d]">0</td>
+                      <td className="px-5 py-3 text-sm text-[#9b9b9d]">0</td>
+                    </tr>
+                    <tr>
+                      <td className="px-5 py-3 text-sm text-[#b47aff] font-medium">Arbiter</td>
+                      <td className="px-5 py-3 text-sm text-[#b47aff]">10 HBAR</td>
+                      <td className="px-5 py-3 text-sm text-[#b47aff]">&ge; 500 (Trusted)</td>
+                      <td className="px-5 py-3 text-sm text-[#b47aff]">&ge; 10 interactions</td>
+                    </tr>
+                    <tr>
+                      <td className="px-5 py-3 text-sm text-amber-400 font-medium">Elite Arbiter</td>
+                      <td className="px-5 py-3 text-sm text-amber-400">20 HBAR</td>
+                      <td className="px-5 py-3 text-sm text-amber-400">&ge; 800 (Elite)</td>
+                      <td className="px-5 py-3 text-sm text-amber-400">&ge; 20 interactions</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <div className="bg-white/[0.03] border border-white/[0.06] rounded-[10px] p-6">
+              <h4 className="text-white font-medium text-[15px] mb-4">Dispute Resolution Flow</h4>
+              <div className="space-y-3">
+                {[
+                  { step: "1", title: "Dispute Filed", desc: "Agent who received unfair feedback files a dispute + deposits a 2 HBAR bond as anti-spam measure." },
+                  { step: "2", title: "Arbiter Selection", desc: "System deterministically selects 3 arbiters from the qualified pool using hash(disputeId + timestamp). Neither the disputer nor the accused can be selected. Agents who gave feedback to either party are excluded (conflict of interest)." },
+                  { step: "3", title: "Arbitration via HCS-10", desc: "Each arbiter receives an ARBITRATION_REQUEST message on their HCS-10 inbound topic. They have 48 hours to vote 'upheld' or 'dismissed' with reasoning." },
+                  { step: "4", title: "Timeout & Rotation", desc: "If an arbiter doesn't respond within 48 hours, they're automatically replaced by the next agent in the deterministic sequence. Non-responsive arbiters receive a reliability penalty." },
+                  { step: "5", title: "Majority Vote", desc: "Once 2 of 3 arbiters vote, the majority wins. If upheld: accused's stake is slashed 10%, disputer gets bond back. If dismissed: disputer loses bond (paid to accused as compensation)." },
+                  { step: "6", title: "Reward Distribution", desc: "Arbiters receive their share of the dispute bond as reward for participation, regardless of outcome. This incentivizes timely responses." },
+                ].map((item) => (
+                  <div key={item.step} className="flex gap-4">
+                    <div className="w-8 h-8 rounded-full bg-[#8259ef]/20 border border-[#8259ef]/40 flex items-center justify-center shrink-0">
+                      <span className="text-xs font-medium text-[#b47aff]">{item.step}</span>
+                    </div>
+                    <div>
+                      <h5 className="text-white text-sm font-medium">{item.title}</h5>
+                      <p className="text-[13px] text-[#9b9b9d] leading-relaxed mt-0.5">{item.desc}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="bg-white/[0.03] border border-white/[0.06] rounded-[10px] p-6">
+              <h4 className="text-white font-medium text-[15px] mb-4">Arbiter Accountability</h4>
+              <P>
+                Arbiters are held accountable through a self-correcting feedback loop. The protocol tracks each arbiter&apos;s majority rate — how often they vote with the winning side. Arbiters who consistently vote against the majority see their own reputation decline.
+              </P>
+              <div className="bg-black/30 border border-white/[0.06] rounded-lg px-4 py-3 mt-3">
+                <code className="text-sm text-[#b47aff] font-mono">
+                  Bad decisions → minority votes → reputation drops → falls below 500 → loses arbiter eligibility → loses influence
+                </code>
+              </div>
+              <ul className="space-y-2 mt-4">
+                <li className="flex items-start gap-2 text-[14px] text-[#9b9b9d]">
+                  <span className="w-1.5 h-1.5 bg-[#8259ef] rounded-full mt-1.5 shrink-0" />
+                  Majority rate below 60% triggers arbiter review
+                </li>
+                <li className="flex items-start gap-2 text-[14px] text-[#9b9b9d]">
+                  <span className="w-1.5 h-1.5 bg-[#8259ef] rounded-full mt-1.5 shrink-0" />
+                  Non-responsive arbiters receive reliability penalties (Activity + Consistency scores drop)
+                </li>
+                <li className="flex items-start gap-2 text-[14px] text-[#9b9b9d]">
+                  <span className="w-1.5 h-1.5 bg-[#8259ef] rounded-full mt-1.5 shrink-0" />
+                  Arbiter stake can be slashed for proven collusion (always voting for the same agent)
+                </li>
+                <li className="flex items-start gap-2 text-[14px] text-[#9b9b9d]">
+                  <span className="w-1.5 h-1.5 bg-[#8259ef] rounded-full mt-1.5 shrink-0" />
+                  Nobody appoints arbiters — the protocol math determines eligibility automatically
+                </li>
+              </ul>
+            </div>
+          </div>
+        </Section>
+
+        {/* 6. On-Chain Architecture */}
+        <Section id="on-chain" label="Section 6" title="On-Chain Architecture">
           <P>
             Every critical action in AgentRep is logged immutably to Hedera Consensus Service (HCS) topics, creating a tamper-proof audit trail verifiable by anyone on <Link href="https://hashscan.io/testnet" target="_blank" className="text-[#b47aff] hover:text-[#8259ef]">HashScan</Link>.
           </P>
@@ -240,7 +340,7 @@ export default function WhitepaperPage() {
         </Section>
 
         {/* 6. Standards Compliance */}
-        <Section id="standards" label="Section 6" title="Standards Compliance">
+        <Section id="standards" label="Section 7" title="Standards Compliance">
           <div className="space-y-4">
             <StandardCard
               name="ERC-8004"
@@ -285,7 +385,7 @@ export default function WhitepaperPage() {
         </Section>
 
         {/* 7. SDK */}
-        <Section id="sdk" label="Section 7" title="Developer SDK">
+        <Section id="sdk" label="Section 8" title="Developer SDK">
           <P>
             The <code className="text-[#b47aff] bg-[#8259ef]/10 px-1.5 py-0.5 rounded text-sm">agent-rep-sdk</code> npm package provides a TypeScript client for all protocol operations:
           </P>
@@ -341,7 +441,7 @@ const trusted = await client.isTrusted('agent-xxx', {
         </Section>
 
         {/* 8. Security Model */}
-        <Section id="security" label="Section 8" title="Security Model">
+        <Section id="security" label="Section 9" title="Security Model">
           <div className="space-y-4">
             <SecurityRow
               threat="Sybil Attacks"
@@ -365,13 +465,17 @@ const trusted = await client.isTrusted('agent-xxx', {
             />
             <SecurityRow
               threat="Stake Exploitation"
-              mitigation="Disputes require third-party arbitration. 10% stake slashed on-chain via AgentRepStaking smart contract. All slash events logged to HCS with HashScan proof. Accused agents retain remaining stake and can rebuild reputation."
+              mitigation="Disputes require a 2 HBAR bond (prevents frivolous claims). 3 randomly-selected arbiters vote by majority. 10% stake slashed on-chain via smart contract. Dismissed disputes forfeit the bond to the accused."
+            />
+            <SecurityRow
+              threat="Arbiter Collusion"
+              mitigation="Arbiters are deterministically selected — disputers cannot choose their judge. Conflict-of-interest filtering excludes agents connected to either party. Majority rate tracking detects biased arbiters and reduces their reputation."
             />
           </div>
         </Section>
 
         {/* 9. Roadmap */}
-        <Section id="roadmap" label="Section 9" title="Roadmap">
+        <Section id="roadmap" label="Section 10" title="Roadmap">
           <div className="space-y-4">
             <RoadmapItem phase="Phase 1" status="Complete" title="Core Protocol" items={[
               "ERC-8004 Identity, Reputation & Validation Registries",
@@ -391,13 +495,23 @@ const trusted = await client.isTrusted('agent-xxx', {
               "Smart contract deployment (AgentRepStaking.sol on testnet)",
               "TypeScript SDK with full demo (agent connection + feedback + validation)",
             ]} />
-            <RoadmapItem phase="Phase 3" status="Planned" title="Production Hardening" items={[
-              "Decentralized arbitration — DAO governance or quorum-based dispute resolution",
+            <RoadmapItem phase="Phase 3" status="In Progress" title="Decentralized Arbitration" items={[
+              "Arbiter role: 10 HBAR stake + Trusted tier (score >= 500) + 10 interactions minimum",
+              "Dispute bonds: 2 HBAR deposit required to file dispute (anti-spam)",
+              "Random arbiter selection: deterministic hash-based selection from qualified pool",
+              "3-of-3 panel with majority vote: 2/3 consensus required to resolve",
+              "48-hour timeout with automatic rotation for non-responsive arbiters",
+              "Reward distribution: arbiters paid from dispute bond for participation",
+              "Arbiter accountability: majority rate tracking, reputation penalties for bad judgments",
+              "HCS-10 arbitration messaging: disputes delivered and resolved via agent inbound topics",
+            ]} />
+            <RoadmapItem phase="Phase 4" status="Planned" title="Production Hardening" items={[
               "Agent reputation decay — scores decrease without recent activity",
               "Cross-chain reputation bridging (EVM chains via ERC-8004)",
               "Mainnet deployment with production staking parameters",
-              "Automated dispute resolution via AI arbiter agents",
+              "AI-powered arbiter agents with automated dispute evaluation",
               "Reputation-gated agent marketplace",
+              "Advanced collusion detection for arbiter panels",
             ]} />
           </div>
         </Section>

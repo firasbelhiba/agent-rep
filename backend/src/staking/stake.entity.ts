@@ -30,4 +30,29 @@ export class StakeEntity {
   // Last Hedera transaction ID from the staking contract
   @Column({ name: 'contract_tx_id', nullable: true })
   contractTxId?: string;
+
+  // ---- Arbiter fields ----
+
+  // Whether this agent is eligible to serve as arbiter
+  @Column({ name: 'arbiter_eligible', default: false })
+  arbiterEligible: boolean;
+
+  // Additional arbiter stake (on top of regular stake)
+  @Column({ name: 'arbiter_stake', type: 'bigint', default: 0 })
+  arbiterStake: number;
+
+  // Total disputes resolved as arbiter
+  @Column({ name: 'arbitrations_resolved', type: 'int', default: 0 })
+  arbitrationsResolved: number;
+
+  // How often this arbiter voted with the majority (0-100%)
+  @Column({ name: 'majority_rate', type: 'float', default: 0 })
+  majorityRate: number;
+
+  // Total majority and minority votes (for computing rate)
+  @Column({ name: 'majority_votes', type: 'int', default: 0 })
+  majorityVotes: number;
+
+  @Column({ name: 'minority_votes', type: 'int', default: 0 })
+  minorityVotes: number;
 }
