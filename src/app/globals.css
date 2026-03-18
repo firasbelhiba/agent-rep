@@ -1,5 +1,28 @@
 @import "tailwindcss";
 
+/* Range slider thumb */
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: #8259ef;
+  border: 3px solid #111122;
+  box-shadow: 0 0 8px rgba(130, 89, 239, 0.5);
+  cursor: pointer;
+  margin-top: -1px;
+}
+input[type="range"]::-moz-range-thumb {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: #8259ef;
+  border: 3px solid #111122;
+  box-shadow: 0 0 8px rgba(130, 89, 239, 0.5);
+  cursor: pointer;
+}
+
 :root {
   --background: #000000;
   --foreground: #ffffff;

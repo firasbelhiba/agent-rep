@@ -448,35 +448,87 @@ export default function ProfilePage() {
               Stake additional HBAR to qualify as an arbiter for <span className="text-white font-medium">{agents.find(a => a.agentId === arbiterAgent)?.name}</span>. Arbiters resolve disputes and earn rewards.
             </p>
 
-            <div className="space-y-4">
+            <div className="space-y-5">
+              {/* Stake Slider */}
               <div>
-                <label className="text-xs text-[#9b9b9d] uppercase tracking-wider block mb-2">Stake Amount</label>
+                <div className="flex items-center justify-between mb-3">
+                  <label className="text-xs text-[#9b9b9d] uppercase tracking-wider">Stake Amount</label>
+                  <span className="text-2xl font-light text-white">{arbiterAmount} <span className="text-sm text-[#9b9b9d]">HBAR</span></span>
+                </div>
                 <div className="relative">
                   <input
-                    type="number"
-                    min={10}
+                    type="range"
+                    min={5}
+                    max={50}
+                    step={1}
                     value={arbiterAmount}
                     onChange={(e) => setArbiterAmount(e.target.value)}
-                    className="w-full bg-[#0a0a1a] border border-white/10 rounded-lg px-4 py-3 text-white text-lg focus:outline-none focus:border-[#8259ef]/50"
+                    className="w-full h-2 rounded-full appearance-none cursor-pointer"
+                    style={{
+                      background: `linear-gradient(to right, ${Number(arbiterAmount) >= 10 ? '#8259ef' : '#ef4444'} 0%, ${Number(arbiterAmount) >= 10 ? '#8259ef' : '#ef4444'} ${((Number(arbiterAmount) - 5) / 45) * 100}%, #1a1a2e ${((Number(arbiterAmount) - 5) / 45) * 100}%, #1a1a2e 100%)`,
+                    }}
                   />
-                  <span className="absolute right-4 top-1/2 -translate-y-1/2 text-[#9b9b9d] text-sm">HBAR</span>
+                  {/* Threshold marker at 10 HBAR */}
+                  <div className="absolute top-4 mt-1" style={{ left: `${((10 - 5) / 45) * 100}%`, transform: 'translateX(-50%)' }}>
+                    <div className="w-px h-3 bg-[#00d47e] mx-auto" />
+                    <span className="text-[10px] text-[#00d47e] whitespace-nowrap">Min 10</span>
+                  </div>
                 </div>
-                <p className="text-xs text-[#9b9b9d] mt-1">Minimum 10 HBAR required</p>
+                <div className="flex justify-between mt-6 text-[10px] text-[#9b9b9d]">
+                  <span>5 HBAR</span>
+                  <span>50 HBAR</span>
+                </div>
+                {Number(arbiterAmount) < 10 && (
+                  <p className="text-xs text-red-400 mt-1">Below minimum threshold — need at least 10 HBAR</p>
+                )}
               </div>
 
-              <div className="bg-white/[0.03] border border-white/[0.06] rounded-lg p-4 space-y-2">
-                <p className="text-xs text-[#9b9b9d] uppercase tracking-wider mb-2">Requirements</p>
-                <div className="flex items-center gap-2 text-sm">
-                  <span className="text-emerald-400">✓</span>
-                  <span className="text-[#9b9b9d]">Minimum 10 HBAR stake</span>
+              {/* Eligibility Progress */}
+              <div className="bg-white/[0.03] border border-white/[0.06] rounded-lg p-4 space-y-3">
+                <p className="text-xs text-[#9b9b9d] uppercase tracking-wider mb-1">Eligibility Checklist</p>
+
+                {/* Stake requirement */}
+                <div className="space-y-1">
+                  <div className="flex items-center justify-between text-sm">
+                    <div className="flex items-center gap-2">
+                      <span className={`w-5 h-5 rounded-full flex items-center justify-center text-xs ${Number(arbiterAmount) >= 10 ? 'bg-emerald-950 text-emerald-400 border border-emerald-800' : 'bg-white/[0.03] text-[#9b9b9d] border border-white/[0.06]'}`}>
+                        {Number(arbiterAmount) >= 10 ? '✓' : '○'}
+                      </span>
+                      <span className={Number(arbiterAmount) >= 10 ? 'text-emerald-400' : 'text-[#9b9b9d]'}>Arbiter Stake</span>
+                    </div>
+                    <span className={`text-xs ${Number(arbiterAmount) >= 10 ? 'text-emerald-400' : 'text-[#9b9b9d]'}`}>{arbiterAmount}/10 HBAR</span>
+                  </div>
+                  <div className="ml-7 h-1.5 bg-white/[0.06] rounded-full overflow-hidden">
+                    <div className={`h-full rounded-full transition-all ${Number(arbiterAmount) >= 10 ? 'bg-emerald-500' : 'bg-red-500'}`} style={{ width: `${Math.min(100, (Number(arbiterAmount) / 10) * 100)}%` }} />
+                  </div>
                 </div>
-                <div className="flex items-center gap-2 text-sm">
-                  <span className="text-[#9b9b9d]">○</span>
-                  <span className="text-[#9b9b9d]">Trusted tier (score ≥ 500)</span>
+
+                {/* Reputation requirement */}
+                <div className="space-y-1">
+                  <div className="flex items-center justify-between text-sm">
+                    <div className="flex items-center gap-2">
+                      <span className="w-5 h-5 rounded-full flex items-center justify-center text-xs bg-white/[0.03] text-[#9b9b9d] border border-white/[0.06]">○</span>
+                      <span className="text-[#9b9b9d]">Trusted Tier</span>
+                    </div>
+                    <span className="text-xs text-[#9b9b9d]">Score ≥ 500</span>
+                  </div>
+                  <div className="ml-7 h-1.5 bg-white/[0.06] rounded-full overflow-hidden">
+                    <div className="h-full bg-amber-500 rounded-full" style={{ width: '20%' }} />
+                  </div>
                 </div>
-                <div className="flex items-center gap-2 text-sm">
-                  <span className="text-[#9b9b9d]">○</span>
-                  <span className="text-[#9b9b9d]">Minimum 10 interactions</span>
+
+                {/* Activity requirement */}
+                <div className="space-y-1">
+                  <div className="flex items-center justify-between text-sm">
+                    <div className="flex items-center gap-2">
+                      <span className="w-5 h-5 rounded-full flex items-center justify-center text-xs bg-white/[0.03] text-[#9b9b9d] border border-white/[0.06]">○</span>
+                      <span className="text-[#9b9b9d]">Activity</span>
+                    </div>
+                    <span className="text-xs text-[#9b9b9d]">≥ 10 interactions</span>
+                  </div>
+                  <div className="ml-7 h-1.5 bg-white/[0.06] rounded-full overflow-hidden">
+                    <div className="h-full bg-amber-500 rounded-full" style={{ width: '30%' }} />
+                  </div>
                 </div>
               </div>
 
