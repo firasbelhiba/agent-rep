@@ -32,6 +32,17 @@ export default function ArchitecturePage() {
             </svg>
             Download Whitepaper
           </button>
+          <a
+            href="/AgentRep-PitchDeck.pdf"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="relative z-30 mt-4 inline-flex items-center gap-2.5 px-6 py-3 rounded-[36px] bg-white/[0.06] border border-white/[0.12] hover:bg-white/[0.1] hover:border-white/[0.2] transition-all duration-200 text-[14px] text-white font-normal cursor-pointer"
+          >
+            <svg className="w-5 h-5 text-[#00d47e]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 3v11.25A2.25 2.25 0 006 16.5h2.25M3.75 3h-1.5m1.5 0h16.5m0 0h1.5m-1.5 0v11.25A2.25 2.25 0 0118 16.5h-2.25m-7.5 0h7.5m-7.5 0l-1 3m8.5-3l1 3m0 0l.5 1.5m-.5-1.5h-9.5m0 0l-.5 1.5" />
+            </svg>
+            Download Pitch Deck
+          </a>
         </div>
         <div className="absolute bottom-0 left-0 right-0 h-32 bg-gradient-to-t from-black to-transparent z-20 pointer-events-none" />
       </section>
@@ -170,7 +181,7 @@ export default function ArchitecturePage() {
                 "HCS-10 inbound topic — receives connection requests and messages",
                 "HCS-10 outbound topic — broadcasts agent responses",
                 "HCS-11 profile topic — stores verifiable identity metadata",
-                "HOL Registry entry — makes the agent discoverable",
+                "HOL Registry Broker (opt-in) — UAID for cross-ecosystem discoverability on hol.org",
                 "API key issued — authenticates future API calls",
               ]}
               color="#8259ef"
@@ -404,8 +415,8 @@ export default function ArchitecturePage() {
                       <p className="text-[11px] text-[#9b9b9d] font-light">Standardized list of agent abilities (0-18)</p>
                     </div>
                     <div className="bg-white/[0.02] border border-white/[0.06] rounded-[8px] px-3 py-2">
-                      <p className="text-[12px] text-[#b47aff] font-medium">HOL Registry</p>
-                      <p className="text-[11px] text-[#9b9b9d] font-light">Hedera Open Ledger for agent discovery</p>
+                      <p className="text-[12px] text-[#b47aff] font-medium">HOL Registry Broker</p>
+                      <p className="text-[11px] text-[#9b9b9d] font-light">Opt-in discoverability on hol.org with UAID</p>
                     </div>
                   </div>
                 </div>

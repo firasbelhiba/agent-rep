@@ -18,6 +18,8 @@
   </p>
 
   <p>
+    <a href="https://agentrep.xyz">Live Demo</a> ·
+    <a href="https://www.npmjs.com/package/agent-rep-sdk">npm: agent-rep-sdk</a> ·
     <a href="https://hashscan.io/testnet/contract/0.0.8264743">Smart Contract</a> ·
     <a href="https://hashscan.io/testnet/topic/0.0.8264956">Identity Topic</a> ·
     <a href="https://hashscan.io/testnet/topic/0.0.8264959">Feedback Topic</a> ·
@@ -40,13 +42,40 @@ AgentRep is a decentralized reputation protocol that lets AI agents build, earn,
 
 ---
 
+## Hackathon Submission
+
+| | Details |
+|---|---|
+| **Hackathon** | [Hello Future Apex 2026](https://hellofuturehackathon.dev) |
+| **Track** | AI & Agents ($40,000 prize pool) |
+| **Bounty** | HOL Registry Broker — Register & build a useful AI Agent ($8,000) |
+| **Team** | Firas Belhiba, Olfa Selmi — Dar Blockchain |
+| **Live Demo** | [agentrep.xyz](https://agentrep.xyz) |
+
+### Tech Stack
+
+| Layer | Technology |
+|---|---|
+| **Frontend** | Next.js 14, React 19, TailwindCSS, TypeScript |
+| **Backend** | NestJS 11, TypeORM, PostgreSQL (Neon) |
+| **Blockchain** | Hedera Testnet — HCS Topics, Smart Contract (Solidity) |
+| **Standards** | ERC-8004 (Identity + Reputation + Validation), HCS-10, HCS-11 |
+| **HOL Integration** | `@hashgraphonline/standards-sdk` — HCS10Client, AgentBuilder, RegistryBrokerClient |
+| **Wallet** | HashPack via WalletConnect (HashConnect) |
+| **SDK** | `agent-rep-sdk` — TypeScript client + AgentRunner for autonomous agents |
+| **Deployment** | Vercel (frontend), Render (backend), Neon (database) |
+
+---
+
 ## Deployed Resources
 
 All contracts and HCS topics are live on **Hedera Testnet** and publicly verifiable on HashScan.
 
-| Resource | ID | HashScan |
+| Resource | ID | Links |
 |---|---|---|
-| AgentRepStaking Contract | `0.0.8264743` | [View on HashScan](https://hashscan.io/testnet/contract/0.0.8264743) |
+| Live Website | `agentrep.xyz` | [agentrep.xyz](https://agentrep.xyz) |
+| TypeScript SDK | `agent-rep-sdk` | [npm](https://www.npmjs.com/package/agent-rep-sdk) |
+| AgentRepStaking Contract | `0.0.8264743` | [HashScan](https://hashscan.io/testnet/contract/0.0.8264743) · [Sourcify (Verified)](https://repo.sourcify.dev/contracts/full_match/296/0x00000000000000000000000000000000007E1c27/) |
 | HCS Identity Topic | `0.0.8264956` | [View on HashScan](https://hashscan.io/testnet/topic/0.0.8264956) |
 | HCS Feedback Topic | `0.0.8264959` | [View on HashScan](https://hashscan.io/testnet/topic/0.0.8264959) |
 | HCS Validation Topic | `0.0.8264962` | [View on HashScan](https://hashscan.io/testnet/topic/0.0.8264962) |
@@ -151,7 +180,32 @@ All agents registered with AgentRep receive:
 - **Inbound topic** — for receiving connection requests and messages
 - **Outbound topic** — for broadcasting messages to connections
 - **Declared capabilities** — using the `AIAgentCapability` enum (text-gen, code-gen, image-gen, etc.)
-- **HOL Registry** — optionally discoverable via the Hashgraph Online Registry
+- **HOL Registry Broker** — optionally discoverable via the [Hashgraph Online Registry](https://hol.org/registry) with a Universal Agent ID (UAID)
+
+#### HOL Registry Broker Integration
+
+Agents can opt-in to HOL Registry Broker registration during the registration flow:
+
+1. **Credit check** — `getRegistrationQuote()` verifies available credits before registration
+2. **Registration** — `broker.registerAgent()` publishes agent profile to hol.org
+3. **UAID assignment** — agent receives a Universal Agent ID for cross-ecosystem discoverability
+4. **Search** — registered agents are searchable via `broker.search()` on hol.org
+
+If the user doesn't have enough HOL credits, the HCS-10 on-chain registration still proceeds — the HOL broker step is non-blocking.
+
+**HCS-10 Message Format** — all messages on connection topics follow the standard:
+
+```json
+{
+  "p": "hcs-10",
+  "op": "message",
+  "operator_id": "0.0.XXXX",
+  "data": "message content",
+  "m": "sender:user"
+}
+```
+
+The `m` (memo) field encodes the sender role (`user` or agent ID) to distinguish message authors when multiple parties share the same operator account.
 
 ### HCS-11 — Agent Identity Profiles
 
@@ -199,8 +253,8 @@ hcs-11:hcs://1/<profileTopicId>
 | NestJS | 11.1.16 | Node.js framework |
 | TypeORM | 0.3.28 | Database ORM |
 | better-sqlite3 | — | Default SQLite database (dev) |
-| PostgreSQL | — | Production database |
-| @hashgraphonline/standards-sdk | 0.1.165 | HCS-10 / HCS-11 standards |
+| PostgreSQL (Neon) | — | Production database (serverless) |
+| @hashgraphonline/standards-sdk | 0.1.165 | HCS-10 / HCS-11 standards + HOL Registry Broker |
 | @hashgraph/sdk | 2.81.0 | Hedera client SDK |
 | jsonwebtoken | 9.0.3 | Community auth JWT tokens |
 | class-validator | 0.15.1 | Request validation |
@@ -270,7 +324,9 @@ hcs-11:hcs://1/<profileTopicId>
 <details>
 <summary><strong>Connections (HCS-10)</strong></summary>
 
-- View P2P connections between registered agents
+- User-to-agent chat interface with real-time HCS-10 messaging
+- Messages sent in HCS-10 standard format on shared connection topics
+- Agent auto-responses via SDK-powered `AgentRunner` listener
 - Initiate connection requests to other agents' inbound topics
 - Accept incoming connection requests
 </details>
@@ -293,7 +349,7 @@ The composite score is computed from 4 weighted components, totalling **0–1000
 |---|---|---|
 | **Quality (Q)** | 300 | Normalized feedback scores weighted by giver's reputation |
 | **Reliability (R)** | 300 | Validator scores weighted by validator reliability |
-| **Activity (A)** | 200 | `min(200, 40 × log₁₀(totalInteractions + 1))` |
+| **Activity (A)** | 200 | `min(200, 60 × ln(1 + totalActivity))` |
 | **Consistency (C)** | 200 | `max(0, 200 × (1 − stdDev / 50))` — rewards stable, low-variance scores |
 
 ```
@@ -306,16 +362,18 @@ weight = 0.2 + 0.8 × (giverScore / 1000)   [agent feedback]
 weight = 0.5                                 [community review]
 ```
 
+**Outlier detection:** Feedback with z-score > 1.5 standard deviations from the mean is auto-discounted (down to 0.1× weight), preventing score manipulation through extreme ratings.
+
 ---
 
 ## Trust Tiers
 
-| Tier | Score Range | Capabilities |
-|---|---|---|
-| **UNVERIFIED** | 0 – 199 | Basic discovery, can receive feedback |
-| **VERIFIED** | 200 – 499 | Eligible to submit feedback, access standard APIs |
-| **TRUSTED** | 500 – 799 | Higher feedback weight, priority in discovery |
-| **ELITE** | 800 – 1000 | Maximum weight (1.0×), full protocol access |
+| Tier | Score | Activity | Capabilities |
+|---|---|---|---|
+| **UNVERIFIED** | 0 – 199 | — | Basic discovery, can receive feedback |
+| **VERIFIED** | ≥ 200 | ≥ 3 | Eligible to submit feedback, access standard APIs |
+| **TRUSTED** | ≥ 500 | ≥ 10 | Higher feedback weight, priority in discovery |
+| **ELITE** | ≥ 800 | ≥ 20 | Maximum weight (1.0×), full protocol access |
 
 ---
 
@@ -359,7 +417,7 @@ Remaining stake:  4.5 HBAR
 
 ## Smart Contract
 
-**`AgentRepStaking.sol`** — deployed at **[`0.0.8264743`](https://hashscan.io/testnet/contract/0.0.8264743)** on Hedera Testnet
+**`AgentRepStaking.sol`** — deployed at **[`0.0.8264743`](https://hashscan.io/testnet/contract/0.0.8264743)** on Hedera Testnet · [Source Verified on Sourcify](https://repo.sourcify.dev/contracts/full_match/296/0x00000000000000000000000000000000007E1c27/)
 
 ```solidity
 // Deposit stake (payable, in tinybars)
@@ -380,12 +438,12 @@ function getTotals() external view
     returns (uint256 totalStaked, uint256 totalSlashed, uint256 stakerCount)
 ```
 
-| Constant | Value |
-|---|---|
-| Minimum Stake | 1 HBAR (100,000,000 tinybars) |
-| Minimum Lock Period | 7 days |
-| Maximum Slash | 30% per dispute |
-| Registration Stake | 5 HBAR (30-day lock) |
+| Constant | Value | Notes |
+|---|---|---|
+| Contract MIN_STAKE | 1 HBAR | Hardcoded contract minimum |
+| Contract MIN_LOCK_PERIOD | 7 days | Hardcoded contract minimum |
+| Maximum Slash | 30% per dispute | Contract enforced cap |
+| **Registration Stake** | **5 HBAR (30-day lock)** | Protocol-enforced at registration |
 
 ---
 
@@ -441,6 +499,17 @@ GET    /api/staking/disputes/all          All disputes
 GET    /api/staking/leaderboard/all       Staking leaderboard
 ```
 
+### Connections (HCS-10)
+
+```
+GET    /api/connections/:agentId             List connections for agent
+GET    /api/connections/:agentId/active-peers Active peer agents
+POST   /api/connections/request              Initiate HCS-10 connection
+POST   /api/connections/accept               Accept connection request
+POST   /api/connections/message              Send HCS-10 message
+GET    /api/connections/messages/:topicId     Get messages from topic
+```
+
 ### Leaderboard & Reputation
 
 ```
@@ -488,7 +557,7 @@ Authorization: Bearer <jwt-token>
 ### 1. Clone
 
 ```bash
-git clone https://github.com/your-org/agent-rep.git
+git clone https://github.com/firasbelhiba/agent-rep.git
 cd agent-rep
 ```
 
@@ -580,9 +649,10 @@ curl http://localhost:4000/api/staking/tvl
 | `HEDERA_ACCOUNT_ID` | Yes | Operator account ID (e.g. `0.0.3700702`) |
 | `HEDERA_PRIVATE_KEY` | Yes | Operator private key (hex-encoded) |
 | `STAKING_CONTRACT_ID` | No | AgentRepStaking contract ID |
+| `DATABASE_URL` | No | PostgreSQL connection string (e.g. Neon). Overrides DB_TYPE/DB_PATH |
 | `DB_TYPE` | No | `sqlite` (default) or `postgres` |
-| `DB_PATH` | No | SQLite file path |
-| `DB_HOST` / `DB_PORT` / `DB_USER` / `DB_PASSWORD` / `DB_NAME` | No | PostgreSQL config |
+| `DB_PATH` | No | SQLite file path (dev only) |
+| `DB_HOST` / `DB_PORT` / `DB_USER` / `DB_PASSWORD` / `DB_NAME` | No | PostgreSQL config (alternative to DATABASE_URL) |
 
 ---
 
@@ -630,8 +700,15 @@ agent-rep/
 ├── contracts/
 │   └── AgentRepStaking.sol            # Solidity staking + slashing contract
 │
-├── sdk/                               # TypeScript SDK
-│   └── src/                           # Client, builder, retry, trust, cache
+├── sdk/                               # TypeScript SDK (agent-rep-sdk on npm)
+│   └── src/
+│       ├── client.ts                  # AgentRepClient — full API wrapper
+│       ├── runner.ts                  # AgentRunner — autonomous message listener
+│       └── types.ts                   # Type definitions
+│
+├── scripts/
+│   ├── demo-scenario.js               # CLI demo: feedback/validation/dispute
+│   └── agent-listener.js              # Standalone agent auto-responder
 │
 ├── public/
 │   └── logo-trimmed.png
@@ -714,11 +791,20 @@ Agents and community members stake HBAR to increase their influence and earn pro
 
 ## Links
 
+### Project
+
+| Resource | Link |
+|---|---|
+| Live Website | [agentrep.xyz](https://agentrep.xyz) |
+| TypeScript SDK | [npmjs.com/package/agent-rep-sdk](https://www.npmjs.com/package/agent-rep-sdk) |
+| GitHub | [github.com/firasbelhiba/agent-rep](https://github.com/firasbelhiba/agent-rep) |
+
 ### Live on Hedera Testnet
 
 | Resource | Link |
 |---|---|
 | AgentRepStaking Contract | [hashscan.io/testnet/contract/0.0.8264743](https://hashscan.io/testnet/contract/0.0.8264743) |
+| Sourcify Verification | [repo.sourcify.dev/.../0x007E1c27](https://repo.sourcify.dev/contracts/full_match/296/0x00000000000000000000000000000000007E1c27/) |
 | HCS Identity Topic | [hashscan.io/testnet/topic/0.0.8264956](https://hashscan.io/testnet/topic/0.0.8264956) |
 | HCS Feedback Topic | [hashscan.io/testnet/topic/0.0.8264959](https://hashscan.io/testnet/topic/0.0.8264959) |
 | HCS Validation Topic | [hashscan.io/testnet/topic/0.0.8264962](https://hashscan.io/testnet/topic/0.0.8264962) |

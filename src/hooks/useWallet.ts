@@ -69,7 +69,7 @@ export function useWallet(): UseWalletReturn {
         const metadata = {
           name: "AgentRep",
           description: "On-Chain Reputation for AI Agents",
-          icons: ["https://agentrip.vercel.app/favicon.ico"],
+          icons: ["https://agentrep.xyz/favicon.ico"],
           url: window.location.origin,
         };
 

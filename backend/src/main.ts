@@ -1,4 +1,5 @@
 import 'reflect-metadata';
+import 'dotenv/config';
 import { NestFactory } from '@nestjs/core';
 import { Logger, ValidationPipe } from '@nestjs/common';
 import { AppModule } from './app.module';
@@ -14,6 +15,7 @@ async function bootstrap() {
     frontendUrl,
     'http://localhost:3000',
     'http://localhost:3001',
+    'http://localhost:3002',
   ];
   // Auto-add www/non-www variant
   if (frontendUrl.includes('://www.')) {

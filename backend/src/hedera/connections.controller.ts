@@ -186,9 +186,9 @@ export class ConnectionsController {
   @Post('message')
   @Throttle({ default: { ttl: 3600000, limit: 20 } })
   async sendMessage(
-    @Body() body: { connectionTopicId: string; message: string; memo?: string },
+    @Body() body: { connectionTopicId: string; message: string; memo?: string; sender?: string },
   ) {
-    const { connectionTopicId, message, memo } = body;
+    const { connectionTopicId, message, memo, sender } = body;
 
     if (!connectionTopicId || !message) {
       throw new HttpException(
@@ -197,7 +197,7 @@ export class ConnectionsController {
       );
     }
 
-    const success = await this.hcs10Service.sendMessage(connectionTopicId, message, memo);
+    const success = await this.hcs10Service.sendMessage(connectionTopicId, message, memo, sender);
 
     if (!success) {
       throw new HttpException('Failed to send message', HttpStatus.INTERNAL_SERVER_ERROR);

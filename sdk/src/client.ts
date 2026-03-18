@@ -1073,11 +1073,12 @@ export class AgentRepClient extends EventEmitter {
    * await client.sendMessage('0.0.8265300', 'Hello from my agent!');
    * ```
    */
-  async sendMessage(connectionTopicId: string, message: string, memo?: string): Promise<boolean> {
+  async sendMessage(connectionTopicId: string, message: string, memo?: string, sender?: string): Promise<boolean> {
     const data = await this.post<{ success: boolean }>('/connections/message', {
       connectionTopicId,
       message,
       memo,
+      sender,
     });
     this.emit('message:sent', { connectionTopicId, message, timestamp: Date.now() });
     return data.success;

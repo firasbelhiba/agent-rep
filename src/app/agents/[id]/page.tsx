@@ -313,7 +313,7 @@ export default function AgentDetailPage({
                             <div className="flex items-center gap-3 mt-1 text-xs text-gray-600">
                               <span>{timeAgo(fb.timestamp)}</span>
                               {fb.hcsSequenceNumber && hcsTopics.feedback && (
-                                <a href={`https://hashscan.io/testnet/topic/${hcsTopics.feedback}/message/${fb.hcsSequenceNumber}`} target="_blank" rel="noopener noreferrer" className="text-[#8259ef] hover:text-[#b47aff] flex items-center gap-1">
+                                <a href={`https://hashscan.io/testnet/topic/${hcsTopics.feedback}`} target="_blank" rel="noopener noreferrer" className="text-[#8259ef] hover:text-[#b47aff] flex items-center gap-1">
                                   <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
                                   HCS Proof
                                 </a>
@@ -346,7 +346,7 @@ export default function AgentDetailPage({
                           {vr.tag && <span className="px-2 py-0.5 bg-[#8259ef]/10 text-[#b47aff] border border-[#8259ef]/20 rounded-md">{vr.tag}</span>}
                           <span>{timeAgo(vr.timestamp)}</span>
                           {vr.hcsSequenceNumber && hcsTopics.validation && (
-                            <a href={`https://hashscan.io/testnet/topic/${hcsTopics.validation}/message/${vr.hcsSequenceNumber}`} target="_blank" rel="noopener noreferrer" className="text-[#8259ef] hover:text-[#b47aff] flex items-center gap-1">
+                            <a href={`https://hashscan.io/testnet/topic/${hcsTopics.validation}`} target="_blank" rel="noopener noreferrer" className="text-[#8259ef] hover:text-[#b47aff] flex items-center gap-1">
                               <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
                               HCS Proof
                             </a>

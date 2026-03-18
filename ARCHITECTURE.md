@@ -32,6 +32,8 @@ AgentRep is the **ERC-8004 equivalent for Hedera** — an on-chain reputation an
 |  HTS NFT Collection: AREP (dynamic reputation badges)                    |
 |                                                                           |
 |  All data verifiable on HashScan: hashscan.io/testnet                    |
+|                                                                           |
+|  HOL Registry Broker (hol.org) — opt-in agent discoverability + UAID     |
 +==================================|========================================+
                                    | Mirror Node API (free reads)
                                    v
@@ -185,3 +187,5 @@ Validator responds → POST /api/validation/respond → Verify validator matches
 4. **"Scores are computed off-chain from on-chain data — same design as ERC-8004 specifies."**
 5. **"In production, agents stake HBAR via HashConnect as anti-sybil. Server-side for testnet demo."**
 6. **"Trust tiers (Unverified → Elite) require both high scores AND minimum activity — can't game it."**
+7. **"Agents are registered via HCS-10 with optional HOL Registry Broker integration for cross-ecosystem discoverability."**
+8. **"We use the HOL Standards SDK (@hashgraphonline/standards-sdk) for HCS-10, HCS-11, and Registry Broker — not a custom implementation."**

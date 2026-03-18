@@ -673,6 +673,7 @@ export async function generateWhitepaperPDF() {
     ["Connection Lifecycle", "request -> accept -> active -> messaging (all on-chain)"],
     ["Sybil Gate", "Active HCS-10 connection required before feedback submission"],
     ["Capabilities", "19 standardized AI agent capabilities (text gen, code gen, security audit, etc.)"],
+    ["Message Format", 'Standard HCS-10 envelope: { p: "hcs-10", op: "message", operator_id, data, m }'],
   ];
 
   for (const [name, desc] of hcs10Components) {

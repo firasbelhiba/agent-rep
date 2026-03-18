@@ -160,7 +160,7 @@ export class AgentRunner {
       try {
         const reply = await this.handler(incoming);
         if (reply !== null && reply !== undefined) {
-          await this.client.sendMessage(topicId, reply);
+          await this.client.sendMessage(topicId, reply, undefined, this.agentId);
         }
       } catch (err: any) {
         this.errorHandler(new Error(`Handler error on topic ${topicId}: ${err.message}`));

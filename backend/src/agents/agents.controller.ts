@@ -8,10 +8,12 @@ import {
   Query,
   Body,
   Headers,
+  Res,
   HttpException,
   HttpStatus,
   Logger,
 } from '@nestjs/common';
+import { Response } from 'express';
 import { Throttle } from '@nestjs/throttler';
 import * as crypto from 'crypto';
 import { AgentsService } from './agents.service';
@@ -337,6 +339,238 @@ export class AgentsController {
       throw new HttpException('Agent not found', HttpStatus.NOT_FOUND);
     }
     return { agentId: id, wallet: agent.agentWallet || null };
+  }
+
+  /**
+   * Check HOL broker credits for agent registration.
+   */
+  @Post('broker-quote')
+  async getBrokerQuote(@Body() body: any) {
+    if (!this.hcs10Service.isConfigured()) {
+      throw new HttpException('HCS-10 not configured', HttpStatus.SERVICE_UNAVAILABLE);
+    }
+    const { name, description, capabilities, model, agentType } = body;
+    const quote = await this.hcs10Service.checkBrokerCredits({
+      name: name || 'unnamed',
+      bio: description || name || 'unnamed',
+      capabilities: capabilities || [],
+      model,
+      agentType,
+    });
+    return quote;
+  }
+
+  /**
+   * SSE endpoint for agent registration with live progress.
+   */
+  @Post('register-with-progress')
+  @Throttle({ default: { ttl: 3600000, limit: 20 } })
+  async registerWithProgress(
+    @Headers('authorization') authHeader: string | undefined,
+    @Body() body: any,
+    @Res() res: Response,
+  ) {
+    // Set SSE headers
+    res.setHeader('Content-Type', 'text/event-stream');
+    res.setHeader('Cache-Control', 'no-cache');
+    res.setHeader('Connection', 'keep-alive');
+    res.setHeader('X-Accel-Buffering', 'no');
+    res.flushHeaders();
+
+    const sendEvent = (event: string, data: any) => {
+      res.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
+    };
+
+    try {
+      const {
+        name, description, skills, capabilities, model, agentType,
+        agentId: providedAgentId, registerOnHol,
+        paymentTxId, payerAccountId,
+        agentURI, agentWallet, metadata: metadataEntries,
+      } = body;
+
+      if (!name) {
+        sendEvent('error', { message: 'name is required' });
+        res.end();
+        return;
+      }
+
+      // Verify payment
+      if (!paymentTxId || !payerAccountId) {
+        sendEvent('error', { message: 'Payment required. Send 8.5 HBAR to the operator wallet before registering.' });
+        res.end();
+        return;
+      }
+
+      sendEvent('progress', { stage: 'payment_verify', message: 'Verifying payment...', percent: 2 });
+
+      let paymentResult = { verified: false, amountTinybars: 0 };
+      for (let attempt = 0; attempt < 5; attempt++) {
+        paymentResult = await this.verifyPaymentTransaction(paymentTxId, payerAccountId);
+        if (paymentResult.verified) break;
+        sendEvent('progress', { stage: 'payment_verify', message: `Waiting for payment confirmation (${attempt + 1}/5)...`, percent: 3 });
+        await new Promise((r) => setTimeout(r, 3000));
+      }
+      if (!paymentResult.verified) {
+        sendEvent('error', { message: 'Payment verification failed. Transaction not found or amount insufficient.' });
+        res.end();
+        return;
+      }
+
+      sendEvent('progress', { stage: 'payment_verified', message: 'Payment verified!', percent: 5 });
+
+      // Extract creator wallet
+      let createdByWallet: string | undefined;
+      if (authHeader && authHeader.startsWith('Bearer ')) {
+        try {
+          const payload = await this.communityAuth.verifyToken(authHeader.replace('Bearer ', ''));
+          createdByWallet = payload.walletAddress;
+        } catch { /* continue */ }
+      }
+
+      // Build metadata
+      const metadataObj: Record<string, unknown> = {};
+      if (Array.isArray(metadataEntries)) {
+        for (const entry of metadataEntries) {
+          if (entry.key) metadataObj[entry.key] = entry.value;
+        }
+      }
+
+      // HCS-10 Registration with progress
+      if (this.hcs10Service.isConfigured()) {
+        const hcs10Result = await this.hcs10Service.registerAgentWithProgress(
+          {
+            name,
+            bio: description || name,
+            capabilities: capabilities || [],
+            model: model || '',
+            agentType: agentType || 'autonomous',
+            registerOnHol: registerOnHol || false,
+          },
+          (event) => sendEvent('progress', event),
+        );
+
+        if (!hcs10Result.success) {
+          sendEvent('error', { message: `Registration failed: ${hcs10Result.error}` });
+          res.end();
+          return;
+        }
+
+        const agentId = hcs10Result.accountId || providedAgentId || `agent-${Date.now()}`;
+
+        // Save agent to DB
+        const existing = await this.agentsService.findOne(agentId);
+        if (existing) {
+          sendEvent('error', { message: `Agent ${agentId} already exists` });
+          res.end();
+          return;
+        }
+
+        const apiKey = `ar_${crypto.randomBytes(32).toString('hex')}`;
+        const apiKeyHash = crypto.createHash('sha256').update(apiKey).digest('hex');
+
+        const agent = await this.agentsService.create({
+          agentId,
+          name: name.trim(),
+          description: (description || '').trim(),
+          skills: skills || [],
+          model: (model || '').trim(),
+          agentType: agentType || 'autonomous',
+          agentURI: agentURI || '',
+          agentWallet: agentWallet || hcs10Result.accountId || undefined,
+          inboundTopicId: hcs10Result.inboundTopicId || '',
+          outboundTopicId: hcs10Result.outboundTopicId || '',
+          profileTopicId: hcs10Result.profileTopicId || '',
+          capabilities: capabilities || [],
+          topicId: hcs10Result.inboundTopicId || '',
+          createdAt: Date.now(),
+          metadata: {
+            ...metadataObj,
+            hcs10TransactionId: hcs10Result.transactionId,
+            hederaAccountId: hcs10Result.accountId,
+          },
+          hcs10Registered: true,
+          brokerUaid: hcs10Result.broker?.uaid || undefined,
+          apiKeyHash,
+          apiKey,
+          createdByWallet,
+          operatingBalance: 300_000_000,
+          paymentTxId: paymentTxId || undefined,
+        } as any);
+
+        // Record HCS identity event
+        let hcsSequenceNumber: string | undefined;
+        const topics = await this.systemConfig.getHCSTopics();
+        if (topics.identity) {
+          try {
+            hcsSequenceNumber = await this.hcsService.logInteraction(
+              topics.identity,
+              HCSMessageType.AGENT_REGISTERED,
+              {
+                agentId,
+                agentURI: agent.agentURI || '',
+                owner: agentId,
+                name: name.trim(),
+                hcs10: true,
+              },
+            );
+          } catch { /* non-blocking */ }
+        }
+
+        // Initial reputation + stake
+        let stakeResult: { txId?: string; balanceHbar?: number } = {};
+        try {
+          const { stake, txId } = await this.stakingService.deposit(
+            agentId,
+            REGISTRATION_STAKE_TINYBARS,
+            REGISTRATION_STAKE_LOCK_DAYS,
+          );
+          stakeResult = {
+            txId,
+            balanceHbar: Number(stake.balance) / 100_000_000,
+          };
+        } catch { /* non-blocking */ }
+
+        const reputation = await this.reputationService.computeReputation(agentId);
+
+        const network = process.env.HEDERA_NETWORK || 'testnet';
+
+        // Build response
+        const responseData: any = {
+          agent,
+          reputation,
+          apiKey,
+          hcsSequenceNumber,
+          hcs10: {
+            registered: true,
+            inboundTopicId: hcs10Result.inboundTopicId,
+            outboundTopicId: hcs10Result.outboundTopicId,
+            profileTopicId: hcs10Result.profileTopicId,
+            transactionId: hcs10Result.transactionId,
+          },
+          broker: hcs10Result.broker,
+          stake: {
+            amount: REGISTRATION_STAKE_TINYBARS / 100_000_000,
+            lockDays: REGISTRATION_STAKE_LOCK_DAYS,
+            balanceHbar: stakeResult.balanceHbar || 0,
+            contractTxId: stakeResult.txId,
+            hashScanUrl: stakeResult.txId
+              ? `https://hashscan.io/${network}/transaction/${stakeResult.txId}`
+              : undefined,
+            onChain: !!stakeResult.txId,
+          },
+        };
+
+        sendEvent('complete', responseData);
+      } else {
+        sendEvent('error', { message: 'HCS-10 not configured on server' });
+      }
+    } catch (error: any) {
+      this.logger.error(`SSE registration error: ${error.message}`);
+      sendEvent('error', { message: error.message });
+    }
+
+    res.end();
   }
 
   /**

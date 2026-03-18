@@ -271,6 +271,16 @@ export default function WhitepaperPage() {
                 "Registered agents discoverable via Hedera mirror node",
               ]}
             />
+            <StandardCard
+              name="HOL Registry Broker"
+              subtitle="Agent Discovery & Trust Layer"
+              items={[
+                "Optional registration on Hashgraph Online Registry (hol.org) for cross-ecosystem discoverability",
+                "Universal Agent ID (UAID) — unique identifier across all registries and protocols",
+                "Credit-based registration with getRegistrationQuote() for cost transparency",
+                "Integrated via @hashgraphonline/standards-sdk with RegistryBrokerClient",
+              ]}
+            />
           </div>
         </Section>
 
@@ -366,6 +376,7 @@ const trusted = await client.isTrusted('agent-xxx', {
             <RoadmapItem phase="Phase 1" status="Complete" title="Core Protocol" items={[
               "ERC-8004 Identity, Reputation & Validation Registries",
               "HCS-10 agent connections and HCS-11 profiles",
+              "HOL Registry Broker integration with credit check and UAID assignment",
               "HCS on-chain logging with HashScan proof links",
               "NFT-based reputation badges (HTS)",
               "Community feedback with wallet authentication",

@@ -174,7 +174,10 @@ export class HCS10Service {
         let broker: { uaid?: string; registered: boolean; error?: string } | undefined;
         if (params.registerOnHol) {
           try {
-            broker = await this.registerWithBroker(params);
+            broker = await this.registerWithBroker({
+              ...params,
+              capabilities: resolvedCaps as number[],
+            });
           } catch (e: any) {
             this.logger.warn(`Broker registration failed: ${e.message}`);
             broker = { registered: false, error: e.message };
@@ -406,17 +409,41 @@ export class HCS10Service {
   }
 
   /**
-   * Send a message on a connection topic.
+   * Send a message on a connection topic using HCS-10 SDK standard format.
+   * Message format: { p: "hcs-10", op: "message", operator_id, data, m }
+   * The senderRole (e.g. "user" or agentId) is embedded in the memo field
+   * so consumers can distinguish who sent the message.
    */
-  async sendMessage(connectionTopicId: string, data: string, memo?: string): Promise<boolean> {
+  async sendMessage(connectionTopicId: string, data: string, memo?: string, senderRole?: string): Promise<boolean> {
     try {
-      const client = this.getClient();
+      const { TopicMessageSubmitTransaction, Client: HederaClient } = await import('@hashgraph/sdk');
+      const hederaClient = process.env.HEDERA_NETWORK === 'mainnet'
+        ? HederaClient.forMainnet()
+        : HederaClient.forTestnet();
+      hederaClient.setOperator(
+        process.env.HEDERA_ACCOUNT_ID!,
+        process.env.HEDERA_PRIVATE_KEY!,
+      );
 
-      await client.sendMessage(connectionTopicId, data, memo);
-      this.logger.log(`Message sent to connection topic ${connectionTopicId}`);
+      // HCS-10 standard message format (same as SDK produces)
+      const enrichedMemo = senderRole ? `sender:${senderRole}` : (memo || undefined);
+      const payload = JSON.stringify({
+        p: 'hcs-10',
+        op: 'message',
+        operator_id: process.env.HEDERA_ACCOUNT_ID,
+        data,
+        m: enrichedMemo,
+      });
+
+      await new TopicMessageSubmitTransaction()
+        .setTopicId(connectionTopicId)
+        .setMessage(payload)
+        .execute(hederaClient);
+      hederaClient.close();
+      this.logger.log(`HCS-10 message sent to ${connectionTopicId} (role: ${senderRole || 'operator'})`);
       return true;
     } catch (error: any) {
-      this.logger.error(`Message send failed: ${error.message}`);
+      this.logger.error(`Failed to send HCS-10 message to ${connectionTopicId}: ${error.message}`);
       return false;
     }
   }
@@ -442,8 +469,27 @@ export class HCS10Service {
       return json.messages.map((msg: { message: string; consensus_timestamp: string; sequence_number: number }) => {
         const decoded = Buffer.from(msg.message, 'base64').toString('utf-8');
         try {
+          const parsed = JSON.parse(decoded);
+          // Normalize HCS-10 standard format { p: "hcs-10", op: "message", operator_id, data, m }
+          // into a consistent shape for consumers
+          if (parsed.p === 'hcs-10' && parsed.op === 'message') {
+            // Extract sender role from memo (format: "sender:user" or "sender:<agentId>")
+            const memoStr = parsed.m || '';
+            const sender = memoStr.startsWith('sender:') ? memoStr.slice(7) : parsed.operator_id;
+            return {
+              data: {
+                type: 'message',
+                data: parsed.data,
+                sender,
+                memo: memoStr.startsWith('sender:') ? undefined : parsed.m,
+              },
+              consensusTimestamp: msg.consensus_timestamp,
+              sequenceNumber: msg.sequence_number,
+            };
+          }
+          // Legacy format { type, data, sender, timestamp, memo } — pass through
           return {
-            data: JSON.parse(decoded),
+            data: parsed,
             consensusTimestamp: msg.consensus_timestamp,
             sequenceNumber: msg.sequence_number,
           };
@@ -507,6 +553,213 @@ export class HCS10Service {
     } catch (error: any) {
       this.logger.error(`Failed to fetch agent profile: ${error.message}`);
       return null;
+    }
+  }
+
+  /**
+   * Check if there are enough HOL broker credits for agent registration.
+   * Returns quote with available/required/shortfall credits.
+   */
+  async checkBrokerCredits(params: {
+    name: string;
+    bio: string;
+    capabilities: number[];
+    model?: string;
+    agentType?: 'autonomous' | 'manual';
+  }): Promise<{
+    available: number;
+    required: number;
+    shortfall: number;
+    estimatedHbar: number;
+    sufficient: boolean;
+  }> {
+    try {
+      const broker = await this.getBrokerClient();
+
+      const profile: any = {
+        version: '1.0',
+        type: ProfileType.AI_AGENT,
+        display_name: params.name,
+        alias: `agentrep-quote-${Date.now().toString(36)}`,
+        bio: params.bio || params.name,
+        properties: { tags: ['agentrep', 'reputation', 'trust', 'hedera'] },
+        aiAgent: {
+          type: params.agentType === 'manual' ? AIAgentType.MANUAL : AIAgentType.AUTONOMOUS,
+          model: params.model || 'unknown',
+          capabilities: params.capabilities.map((c) => c as AIAgentCapability),
+        },
+      };
+
+      const quote = await broker.getRegistrationQuote({
+        profile,
+        communicationProtocol: 'a2a',
+        registry: BROKER_REGISTRY,
+        metadata: { provider: 'agentrep', version: '1.0.0' },
+      });
+
+      const available = (quote as any).availableCredits ?? 0;
+      const required = (quote as any).requiredCredits ?? 0;
+      const shortfall = (quote as any).shortfallCredits ?? 0;
+      const estimatedHbar = (quote as any).estimatedHbar ?? 0;
+
+      return {
+        available,
+        required,
+        shortfall,
+        estimatedHbar,
+        sufficient: shortfall <= 0,
+      };
+    } catch (error: any) {
+      this.logger.error(`Broker credit check failed: ${error.message}`);
+      return { available: 0, required: 0, shortfall: 0, estimatedHbar: 0, sufficient: false };
+    }
+  }
+
+  /**
+   * Purchase HOL broker credits with HBAR.
+   */
+  async purchaseBrokerCredits(hbarAmount: number): Promise<{
+    success: boolean;
+    credits?: number;
+    error?: string;
+  }> {
+    try {
+      const broker = await this.getBrokerClient();
+
+      const result = await broker.purchaseCreditsWithHbar({
+        accountId: process.env.HEDERA_ACCOUNT_ID!,
+        privateKey: process.env.HEDERA_PRIVATE_KEY!,
+        hbarAmount,
+        memo: 'AgentRep broker credits',
+      });
+
+      this.logger.log(`Purchased HOL credits: ${JSON.stringify(result)}`);
+      return { success: true, credits: (result as any).credits };
+    } catch (error: any) {
+      this.logger.error(`Credit purchase failed: ${error.message}`);
+      return { success: false, error: error.message };
+    }
+  }
+
+  /**
+   * Register agent with progress callback support.
+   * Returns a stream-friendly generator of progress events.
+   */
+  async registerAgentWithProgress(
+    params: RegisterAgentParams,
+    onProgress: (event: { stage: string; message: string; percent: number }) => void,
+  ): Promise<RegisterAgentResult> {
+    try {
+      const client = this.getClient();
+
+      const resolvedCaps = (params.capabilities || []).map(resolveCapability);
+      if (resolvedCaps.length === 0) {
+        resolvedCaps.push(AIAgentCapability.TEXT_GENERATION);
+      }
+
+      const builder = new AgentBuilder()
+        .setName(params.name)
+        .setBio(params.bio || params.name)
+        .setCapabilities(resolvedCaps)
+        .setType(params.agentType || 'autonomous')
+        .setModel(params.model || 'unknown')
+        .setNetwork((process.env.HEDERA_NETWORK || 'testnet') as any)
+        .setInboundTopicType(
+          (params.inboundTopicType || 'PUBLIC') as unknown as InboundTopicType,
+        );
+      if (params.creator) {
+        builder.setCreator(params.creator);
+      }
+
+      onProgress({ stage: 'preparing', message: 'Preparing agent registration...', percent: 5 });
+
+      const result = await client.createAndRegisterAgent(builder, {
+        initialBalance: 3,
+        progressCallback: (progress) => {
+          const stageMap: Record<string, { message: string; percent: number }> = {
+            preparing: { message: 'Creating Hedera account...', percent: 15 },
+            submitting: { message: 'Creating HCS topics...', percent: 35 },
+            confirming: { message: 'Confirming on-chain registration...', percent: 55 },
+            verifying: { message: 'Verifying HCS-11 profile...', percent: 65 },
+            completed: { message: 'HCS-10 registration complete!', percent: 70 },
+            failed: { message: 'Registration failed', percent: 0 },
+          };
+          const mapped = stageMap[progress.stage] || { message: progress.message, percent: 50 };
+          onProgress({ stage: progress.stage, message: mapped.message, percent: mapped.percent });
+        },
+      });
+
+      const state = result.state;
+      const accountResource = (state as any)?.createdResources?.find(
+        (r: string) => r.startsWith('account:'),
+      );
+      const hederaAccountId = accountResource
+        ? accountResource.replace('account:', '')
+        : undefined;
+
+      const hasResources =
+        hederaAccountId && state?.inboundTopicId && state?.outboundTopicId;
+
+      if (result.success || hasResources) {
+        // HOL Registry Broker registration (opt-in)
+        let broker: { uaid?: string; registered: boolean; error?: string } | undefined;
+        if (params.registerOnHol) {
+          onProgress({ stage: 'hol_credits', message: 'Checking HOL Registry credits...', percent: 75 });
+
+          const credits = await this.checkBrokerCredits({
+            name: params.name,
+            bio: params.bio || params.name,
+            capabilities: resolvedCaps as number[],
+            model: params.model,
+            agentType: params.agentType,
+          });
+
+          if (credits.sufficient) {
+            onProgress({ stage: 'hol_register', message: 'Registering on HOL Registry Broker...', percent: 85 });
+            try {
+              broker = await this.registerWithBroker({
+                name: params.name,
+                bio: params.bio || params.name,
+                capabilities: resolvedCaps as number[],
+                model: params.model,
+                agentType: params.agentType,
+              });
+              onProgress({ stage: 'hol_complete', message: 'HOL Registration complete!', percent: 95 });
+            } catch (e: any) {
+              broker = { registered: false, error: e.message };
+              onProgress({ stage: 'hol_failed', message: `HOL registration failed: ${e.message}`, percent: 95 });
+            }
+          } else {
+            broker = {
+              registered: false,
+              error: `Insufficient HOL credits. Required: ${credits.required}, Available: ${credits.available}. Purchase credits at hol.org/registry/billing`,
+            };
+            onProgress({
+              stage: 'hol_no_credits',
+              message: `Not enough HOL credits (need ${credits.shortfall} more). Visit hol.org/registry/billing`,
+              percent: 95,
+            });
+          }
+        }
+
+        onProgress({ stage: 'done', message: 'Registration complete!', percent: 100 });
+
+        return {
+          success: true,
+          accountId: hederaAccountId,
+          inboundTopicId: state?.inboundTopicId,
+          outboundTopicId: state?.outboundTopicId,
+          profileTopicId: state?.profileTopicId,
+          transactionId: result.transactionId,
+          broker,
+        };
+      }
+
+      onProgress({ stage: 'failed', message: state?.error || 'Registration failed', percent: 0 });
+      return { success: false, error: state?.error || 'Registration failed' };
+    } catch (error: any) {
+      onProgress({ stage: 'error', message: error.message, percent: 0 });
+      return { success: false, error: error.message };
     }
   }
 

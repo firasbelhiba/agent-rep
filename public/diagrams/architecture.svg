@@ -30,10 +30,14 @@
   <rect x="640" y="78" width="170" height="34" rx="6" fill="rgba(255,255,255,0.04)" stroke="rgba(255,255,255,0.1)" stroke-width="1"/>
   <text x="725" y="99" text-anchor="middle" fill="#b47aff" font-size="10.5">Architecture · Whitepaper</text>
 
+  <!-- SDK badge -->
+  <rect x="50" y="120" width="760" height="28" rx="5" fill="rgba(0,212,126,0.06)" stroke="rgba(0,212,126,0.25)" stroke-width="1"/>
+  <text x="430" y="139" text-anchor="middle" fill="#00d47e" font-size="10.5" font-weight="500">agent-rep-sdk (npm) — AgentRepClient · AgentRunner · HCS-10 messaging</text>
+
   <!-- Arrow 1: Frontend → Backend -->
-  <line x1="430" y1="130" x2="430" y2="164" stroke="rgba(130,89,239,0.5)" stroke-width="1.5" stroke-dasharray="4 3"/>
+  <line x1="430" y1="148" x2="430" y2="164" stroke="rgba(130,89,239,0.5)" stroke-width="1.5" stroke-dasharray="4 3"/>
   <polygon points="430,172 424,162 436,162" fill="rgba(130,89,239,0.6)"/>
-  <text x="430" y="157" text-anchor="middle" fill="#9b9b9d" font-size="9.5">REST API · port 4000</text>
+  <text x="430" y="162" text-anchor="middle" fill="#9b9b9d" font-size="9.5">REST API · port 4000</text>
 
   <!-- ===== LAYER 2: BACKEND ===== -->
   <rect x="30" y="175" width="800" height="150" rx="10" fill="rgba(255,255,255,0.02)" stroke="rgba(255,255,255,0.12)" stroke-width="1.5"/>

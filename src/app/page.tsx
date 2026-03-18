@@ -568,6 +568,58 @@ export default function LandingPage() {
         </div>
       </section>
 
+      {/* ======== TEAM SECTION ======== */}
+      <section className="py-32 bg-black relative">
+        <div className="max-w-[900px] mx-auto px-6 lg:px-[50px]">
+          <div className="text-center mb-16">
+            <p className="section-label">Who We Are</p>
+            <h2 className="mb-4">
+              The{" "}
+              <span className="bg-gradient-to-r from-[#8259ef] to-[#b47aff] bg-clip-text text-transparent">
+                Team
+              </span>
+            </h2>
+            <div className="w-16 h-[2px] bg-gradient-to-r from-[#8259ef] to-[#b47aff] mx-auto" />
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-12 max-w-[700px] mx-auto">
+            {/* Firas */}
+            <div className="flex flex-col items-center text-center group">
+              <div className="relative mb-6">
+                <div className="w-44 h-44 rounded-full bg-gradient-to-br from-[#8259ef]/30 to-[#b47aff]/10 absolute top-4 left-1/2 -translate-x-1/2" />
+                <img
+                  src="https://res.cloudinary.com/dhbol6euq/image/upload/v1773818762/6e277554-47b2-4cc3-957e-6c4f8adfa350_removalai_preview_igoduj.png"
+                  alt="Firas Belhiba"
+                  className="relative z-10 w-44 h-52 object-contain object-bottom"
+                />
+              </div>
+              <h3 className="text-[20px] text-white font-medium mb-1">Firas Belhiba</h3>
+              <p className="text-[14px] text-[#b47aff] font-light mb-3">Full-Stack Blockchain Developer</p>
+              <p className="text-[13px] text-[#9b9b9d] font-light leading-relaxed max-w-[260px]">
+                Deep experience in Hedera, Solidity, Next.js, and NestJS. Built the entire AgentRep protocol end-to-end.
+              </p>
+            </div>
+
+            {/* Olfa */}
+            <div className="flex flex-col items-center text-center group">
+              <div className="relative mb-6">
+                <div className="w-44 h-44 rounded-full bg-gradient-to-br from-[#8259ef]/30 to-[#b47aff]/10 absolute top-4 left-1/2 -translate-x-1/2" />
+                <img
+                  src="https://res.cloudinary.com/dhbol6euq/image/upload/v1773818763/59a9a6df-96ff-44ce-9f2f-e459625e2186_removalai_preview_p2wr2b.png"
+                  alt="Olfa Selmi"
+                  className="relative z-10 w-44 h-52 object-contain object-bottom"
+                />
+              </div>
+              <h3 className="text-[20px] text-white font-medium mb-1">Olfa Selmi</h3>
+              <p className="text-[14px] text-[#b47aff] font-light mb-3">Blockchain Developer</p>
+              <p className="text-[13px] text-[#9b9b9d] font-light leading-relaxed max-w-[260px]">
+                Experienced in smart contract development and decentralized systems. Contributed to protocol design and testing.
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* ======== CTA SECTION ======== */}
       <section className="py-32 hero-gradient relative">
         <div className="absolute inset-0 bg-gradient-to-t from-transparent via-transparent to-black pointer-events-none" />
