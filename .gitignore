@@ -70,3 +70,8 @@ Thumbs.db
 # ===== Temp & scratch files =====
 verify-tmp/
 *.tmp
+
+# ===== Presentation build artifacts =====
+unpacked/
+slide-images/
+metadata.json
