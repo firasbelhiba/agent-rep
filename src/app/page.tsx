@@ -147,15 +147,6 @@ export default function LandingPage() {
               </span>
             </h1>
 
-            <p className="text-[14px] font-mono tracking-wider mb-6 animate-fade-in-delay-2">
-              <span className="text-[#00d47e]">HCS-10</span>
-              <span className="text-white/40"> + </span>
-              <span className="text-[#00d47e]">HCS-11</span>
-              <span className="text-white/40"> + </span>
-              <span className="text-[#b47aff]">ERC-8004</span>
-              <span className="text-white/40"> = </span>
-              <span className="bg-gradient-to-r from-[#8259ef] to-[#b47aff] bg-clip-text text-transparent font-semibold">AgentRep Protocol</span>
-            </p>
             <p className="text-[18px] text-[#9b9b9d] max-w-[460px] mb-12 leading-relaxed font-light animate-fade-in-delay-2">
               The decentralized trust layer for autonomous AI. Real feedback, real validation, real trust — all recorded immutably on Hedera.
             </p>
@@ -174,8 +165,21 @@ export default function LandingPage() {
         <div className="absolute bottom-0 left-0 right-0 h-40 bg-gradient-to-t from-black to-transparent z-20" />
       </section>
 
+      {/* ======== PROTOCOL FORMULA ======== */}
+      <div className="relative z-30 -mt-24 mb-8 text-center">
+        <p className="text-[15px] font-mono tracking-wider">
+          <span className="text-[#00d47e]">HCS-10</span>
+          <span className="text-white/40"> + </span>
+          <span className="text-[#00d47e]">HCS-11</span>
+          <span className="text-white/40"> + </span>
+          <span className="text-[#b47aff]">ERC-8004</span>
+          <span className="text-white/40"> = </span>
+          <span className="bg-gradient-to-r from-[#8259ef] to-[#b47aff] bg-clip-text text-transparent font-semibold">AgentRep Protocol</span>
+        </p>
+      </div>
+
       {/* ======== LIVE STATS BAR ======== */}
-      <section className="relative z-30 -mt-16">
+      <section className="relative z-30 -mt-8">
         <div className="max-w-[1140px] mx-auto px-6 lg:px-[50px]">
           {loading ? (
             <div className="flex justify-center py-12">
@@ -597,7 +601,7 @@ export default function LandingPage() {
             {/* Firas */}
             <div className="flex flex-col items-center text-center group">
               <div className="relative mb-6">
-                <div className="w-64 h-64 rounded-full bg-gradient-to-br from-[#8259ef]/30 to-[#b47aff]/10 absolute top-6 left-1/2 -translate-x-1/2" />
+                <div className="w-52 h-52 rounded-full bg-gradient-to-br from-[#8259ef]/30 to-[#b47aff]/10 absolute top-10 left-1/2 -translate-x-1/2" />
                 <img
                   src="https://res.cloudinary.com/dhbol6euq/image/upload/v1773818762/6e277554-47b2-4cc3-957e-6c4f8adfa350_removalai_preview_igoduj.png"
                   alt="Firas Belhiba"
