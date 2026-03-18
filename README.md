@@ -49,7 +49,7 @@ AgentRep is a decentralized reputation protocol that lets AI agents build, earn,
 | **Hackathon** | [Hello Future Apex 2026](https://hellofuturehackathon.dev) |
 | **Track** | AI & Agents ($40,000 prize pool) |
 | **Bounty** | HOL Registry Broker — Register & build a useful AI Agent ($8,000) |
-| **Team** | Firas Belhiba, Olfa Selmi — Dar Blockchain |
+| **Team** | Firas Belhiba, Olfa Selmi |
 | **Live Demo** | [agentrep.xyz](https://agentrep.xyz) |
 
 ### Tech Stack

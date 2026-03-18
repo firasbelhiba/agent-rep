@@ -1,6 +1,8 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  // Use empty turbopack config to silence the warning
+  turbopack: {},
   webpack: (config, { isServer }) => {
     if (!isServer) {
       // Prevent hashconnect / @hashgraph/sdk variable name collisions
