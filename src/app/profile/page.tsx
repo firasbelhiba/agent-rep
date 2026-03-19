@@ -35,7 +35,7 @@ export default function ProfilePage() {
   const [arbiterAgent, setArbiterAgent] = useState<string | null>(null);
   const [arbiterAmount, setArbiterAmount] = useState("10");
   const [arbiterLoading, setArbiterLoading] = useState(false);
-  const [arbiterResult, setArbiterResult] = useState<{ success: boolean; message: string } | null>(null);
+  const [arbiterResult, setArbiterResult] = useState<{ success: boolean; message: string; txId?: string } | null>(null);
   const [operatorBalance, setOperatorBalance] = useState<number | null>(null);
   const [userWallet, setUserWallet] = useState<string | null>(null);
   const [userName, setUserName] = useState<string | null>(null);
@@ -535,6 +535,11 @@ export default function ProfilePage() {
               {arbiterResult && (
                 <div className={`rounded-lg px-4 py-3 text-sm ${arbiterResult.success ? 'bg-emerald-950/50 border border-emerald-800 text-emerald-400' : 'bg-red-950/50 border border-red-800 text-red-400'}`}>
                   {arbiterResult.message}
+                  {arbiterResult.success && arbiterResult.txId && (
+                    <a href={`https://hashscan.io/testnet/transaction/${arbiterResult.txId}`} target="_blank" rel="noopener noreferrer" className="block mt-2 text-[#8259ef] hover:text-[#b47aff] underline text-xs">
+                      View on HashScan →
+                    </a>
+                  )}
                 </div>
               )}
 
@@ -554,23 +559,29 @@ export default function ProfilePage() {
                     const amount = Number(arbiterAmount);
                     setArbiterLoading(true);
                     try {
-                      // Step 1: Send HBAR to operator via HashPack wallet
-                      const txResult = await wallet.sendHbar(OPERATOR_ACCOUNT_ID, amount);
+                      // Step 1: Call stakeAsArbiter() on smart contract directly via wallet
+                      const STAKING_CONTRACT_ID = process.env.NEXT_PUBLIC_STAKING_CONTRACT_ID || '0.0.8291516';
+                      const txResult = await wallet.executeContractCall(
+                        STAKING_CONTRACT_ID,
+                        'stakeAsArbiter',
+                        amount,
+                        agent.agentId
+                      );
                       if (!txResult) throw new Error('Transaction rejected by wallet');
 
-                      // Step 2: Backend calls stakeAsArbiter() on smart contract using operator key
-                      const res = await fetch(`${API_URL}/api/staking/arbiter/stake`, {
+                      // Step 2: Record in backend DB (contract already called by wallet)
+                      const res = await fetch(`${API_URL}/api/staking/arbiter/record`, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json', 'X-Agent-Key': agent.apiKey },
-                        body: JSON.stringify({ amount, paymentTxId: txResult.transactionId }),
+                        body: JSON.stringify({ amount, txId: txResult.transactionId }),
                       });
                       const data = await res.json();
-                      if (!res.ok) throw new Error(data.message || 'Failed to stake');
+                      const contractTxId = txResult.transactionId;
                       if (data.arbiterEligible) {
-                        setArbiterResult({ success: true, message: `Arbiter stake of ${amount} HBAR deposited! TX: ${data.txId || txResult.transactionId}` });
-                        setTimeout(() => { setArbiterAgent(null); window.location.reload(); }, 2500);
+                        setArbiterResult({ success: true, message: `Arbiter stake of ${amount} HBAR deposited on smart contract!`, txId: contractTxId });
+                        setTimeout(() => { setArbiterAgent(null); window.location.reload(); }, 4000);
                       } else {
-                        setArbiterResult({ success: true, message: `${amount} HBAR staked (TX: ${data.txId || txResult.transactionId}). You still need Trusted tier (score ≥ 500) and 10+ interactions.` });
+                        setArbiterResult({ success: true, message: `${amount} HBAR staked on smart contract. You still need Trusted tier (score ≥ 500) and 10+ interactions.`, txId: contractTxId });
                       }
                     } catch (err: unknown) {
                       setArbiterResult({ success: false, message: err instanceof Error ? err.message : 'Unknown error' });

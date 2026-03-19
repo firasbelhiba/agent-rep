@@ -84,7 +84,7 @@ contract AgentRepStaking {
      * On Hedera, the operator backend calls this and sends HBAR via
      * ContractExecuteTransaction.setPayableAmount().
      */
-    function stake(bytes32 agentId, uint256 lockDays) external payable onlyOracle {
+    function stake(bytes32 agentId, uint256 lockDays) external payable {
         require(msg.value >= MIN_STAKE, "Below minimum stake");
         require(lockDays * 1 days >= MIN_LOCK_PERIOD, "Lock period too short");
 
@@ -179,7 +179,7 @@ contract AgentRepStaking {
      * @notice Stake additional HBAR as arbiter collateral.
      * @param agentId The agent becoming an arbiter.
      */
-    function stakeAsArbiter(bytes32 agentId) external payable onlyOracle {
+    function stakeAsArbiter(bytes32 agentId) external payable {
         require(msg.value >= MIN_ARBITER_STAKE, "Below minimum arbiter stake");
         arbiterStakes[agentId] += msg.value;
         totalStaked += msg.value;
