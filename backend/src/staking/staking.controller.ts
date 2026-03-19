@@ -420,13 +420,23 @@ export class StakingController {
       const agent = await this.authenticateAgent(apiKey);
       const amountTinybar = Math.round(body.amount * 100_000_000);
       const stake = await this.stakingService.getStake(agent.agentId);
-      stake.arbiterStake = Number(stake.arbiterStake || 0) + amountTinybar;
+
+      // Sync arbiter stake from contract to prevent duplicates
+      const onChainArbiterStake = await this.stakingService.getArbiterStakeFromContract(agent.agentId);
+      if (onChainArbiterStake > 0) {
+        // Use on-chain value as source of truth
+        stake.arbiterStake = onChainArbiterStake;
+      } else {
+        stake.arbiterStake = Number(stake.arbiterStake || 0) + amountTinybar;
+      }
+
       stake.contractTxId = body.txId;
       await this.stakingService.saveStake(stake);
       await this.stakingService.checkAndUpdateArbiterEligibility(agent.agentId);
       return {
         message: 'Arbiter stake recorded',
         arbiterEligible: stake.arbiterEligible,
+        arbiterStake: Number(stake.arbiterStake) / 100_000_000,
         txId: body.txId,
         onChain: true,
       };
@@ -439,10 +449,20 @@ export class StakingController {
   @Get('arbiter/eligibility/:agentId')
   async checkArbiterEligibility(@Param('agentId') agentId: string) {
     const stake = await this.stakingService.getStake(agentId);
+
+    // Sync arbiter stake from contract (source of truth)
+    const onChainArbiterStake = await this.stakingService.getArbiterStakeFromContract(agentId);
+    if (onChainArbiterStake > 0) {
+      stake.arbiterStake = onChainArbiterStake;
+      await this.stakingService.saveStake(stake);
+    }
+
     const totalStake = Number(stake.balance) + Number(stake.arbiterStake || 0);
+    const hasArbiterStake = Number(stake.arbiterStake || 0) >= 1_000_000_000; // 10 HBAR
+
     return {
       agentId,
-      arbiterEligible: stake.arbiterEligible,
+      arbiterEligible: stake.arbiterEligible || hasArbiterStake,
       arbiterStake: Number(stake.arbiterStake || 0) / 100_000_000,
       totalStake: totalStake / 100_000_000,
       arbitrationsResolved: stake.arbitrationsResolved || 0,

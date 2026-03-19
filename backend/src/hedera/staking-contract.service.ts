@@ -175,6 +175,26 @@ export class StakingContractService {
   }
 
   /**
+   * Read an agent's arbiter stake from the contract (view function, free query).
+   */
+  async getArbiterStake(agentId: string): Promise<number> {
+    const client = this.hederaConfig.getClient();
+    const contractId = this.getContractId();
+    const agentBytes = this.agentIdToBytes32(agentId);
+
+    const query = new ContractCallQuery()
+      .setContractId(contractId)
+      .setGas(50000)
+      .setFunction(
+        'getArbiterStake',
+        new ContractFunctionParameters().addBytes32(agentBytes),
+      );
+
+    const result = await query.execute(client);
+    return result.getUint256(0).toNumber();
+  }
+
+  /**
    * Read totals from the contract.
    */
   async getTotals(): Promise<{ totalStaked: number; totalSlashed: number; stakerCount: number }> {

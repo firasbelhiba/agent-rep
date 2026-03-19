@@ -228,11 +228,25 @@ export class AgentsController {
             /* mirror node error — skip */
           }
         }
-        // Fetch stake info
+        // Fetch stake info (regular + arbiter) from contract
         let stakeHbar = 0;
+        let arbiterStakeHbar = 0;
+        let arbiterEligible = false;
         try {
           const stake = await this.stakingService.getStake(agent.agentId);
           stakeHbar = Number(stake.balance) / 100_000_000;
+
+          // Get arbiter stake from smart contract (source of truth)
+          const arbiterStakeTinybar = await this.stakingService.getArbiterStakeFromContract(agent.agentId);
+          if (arbiterStakeTinybar > 0) {
+            arbiterStakeHbar = arbiterStakeTinybar / 100_000_000;
+            // Sync DB
+            stake.arbiterStake = arbiterStakeTinybar;
+            await this.stakingService.saveStake(stake);
+          } else {
+            arbiterStakeHbar = Number(stake.arbiterStake || 0) / 100_000_000;
+          }
+          arbiterEligible = stake.arbiterEligible || (arbiterStakeHbar >= 10);
         } catch {
           /* skip */
         }
@@ -243,7 +257,8 @@ export class AgentsController {
           accountId,
           balanceTinybar,
           balanceHbar,
-          stakeHbar,
+          stakeHbar: stakeHbar + arbiterStakeHbar,
+          arbiterStakeHbar,
           operatingBalanceTinybar: balanceTinybar || Number(agent.operatingBalance) || 0,
           operatingBalanceHbar: balanceTinybar ? balanceTinybar / 100_000_000 : (Number(agent.operatingBalance) || 0) / 100_000_000,
           apiKey: agent.apiKey || null,
@@ -252,7 +267,7 @@ export class AgentsController {
             : null,
           reputationScore: 0,
           feedbackCount: 0,
-          arbiterEligible: false,
+          arbiterEligible,
         };
       }),
     );

@@ -14,6 +14,7 @@ interface AgentBalance {
   balanceTinybar: number;
   balanceHbar: number;
   stakeHbar: number;
+  arbiterStakeHbar?: number;
   operatingBalanceHbar: number;
   operatingBalanceTinybar: number;
   apiKey: string | null;
@@ -364,6 +365,11 @@ export default function ProfilePage() {
                             }`}>
                               {agent.stakeHbar > 0 ? `${agent.stakeHbar.toFixed(2)} HBAR` : "--"}
                             </span>
+                            {(agent.arbiterStakeHbar || 0) > 0 && (
+                              <div className="text-[10px] text-[#9b9b9d]">
+                                incl. {agent.arbiterStakeHbar?.toFixed(0)} arbiter
+                              </div>
+                            )}
                           </td>
                           <td className="px-5 py-4">
                             {agent.apiKey ? (
@@ -388,11 +394,11 @@ export default function ProfilePage() {
                             )}
                           </td>
                           <td className="px-5 py-4 text-center">
-                            {(agent as any).arbiterEligible ? (
+                            {agent.arbiterEligible || (agent.arbiterStakeHbar || 0) >= 10 ? (
                               <span className="px-3 py-1 rounded bg-emerald-950 text-emerald-400 text-[12px] border border-emerald-800">
                                 ✓ Arbiter
                               </span>
-                            ) : (agent as any).reputationScore >= 500 && (agent as any).feedbackCount >= 10 ? (
+                            ) : (agent.reputationScore || 0) >= 500 && (agent.feedbackCount || 0) >= 10 ? (
                               <button
                                 onClick={() => {
                                   setArbiterAgent(agent.agentId);
@@ -404,7 +410,7 @@ export default function ProfilePage() {
                                 Become Arbiter
                               </button>
                             ) : (
-                              <span className="px-3 py-1 rounded bg-white/[0.03] text-[#9b9b9d] text-[11px] border border-white/10 cursor-not-allowed" title={`Needs score ≥ 500 (${(agent as any).reputationScore || 0}) and 10+ feedback (${(agent as any).feedbackCount || 0})`}>
+                              <span className="px-3 py-1 rounded bg-white/[0.03] text-[#9b9b9d] text-[11px] border border-white/10 cursor-not-allowed" title={`Needs score ≥ 500 (${agent.reputationScore || 0}) and 10+ feedback (${agent.feedbackCount || 0})`}>
                                 Not Eligible
                               </span>
                             )}
@@ -590,6 +596,14 @@ export default function ProfilePage() {
                     const agent = agents.find(a => a.agentId === arbiterAgent);
                     if (!agent?.apiKey) { setArbiterResult({ success: false, message: 'No API key found' }); return; }
                     if (!wallet.isConnected) { setArbiterResult({ success: false, message: 'Wallet not connected' }); return; }
+
+                    // Check if already staked as arbiter
+                    if (agent.arbiterEligible || (agent.arbiterStakeHbar || 0) >= 10) {
+                      setArbiterResult({ success: true, message: `Already staked as arbiter (${agent.arbiterStakeHbar?.toFixed(0)} HBAR on contract). No additional stake needed.` });
+                      setTimeout(() => { setArbiterAgent(null); }, 3000);
+                      return;
+                    }
+
                     const amount = Number(arbiterAmount);
                     setArbiterLoading(true);
                     try {
@@ -611,12 +625,8 @@ export default function ProfilePage() {
                       });
                       const data = await res.json();
                       const contractTxId = txResult.transactionId;
-                      if (data.arbiterEligible) {
-                        setArbiterResult({ success: true, message: `Arbiter stake of ${amount} HBAR deposited on smart contract!`, txId: contractTxId });
-                        setTimeout(() => { setArbiterAgent(null); window.location.reload(); }, 4000);
-                      } else {
-                        setArbiterResult({ success: true, message: `${amount} HBAR staked on smart contract. You still need Trusted tier (score ≥ 500) and 10+ interactions.`, txId: contractTxId });
-                      }
+                      setArbiterResult({ success: true, message: `✓ Arbiter stake of ${amount} HBAR deposited on smart contract! You are now an arbiter.`, txId: contractTxId });
+                      setTimeout(() => { setArbiterAgent(null); fetchBalances(); }, 3000);
                     } catch (err: unknown) {
                       setArbiterResult({ success: false, message: err instanceof Error ? err.message : 'Unknown error' });
                     } finally {

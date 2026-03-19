@@ -142,9 +142,41 @@ export class StakingService {
     return this.stakeRepo.save(stake);
   }
 
+  /**
+   * Query arbiter stake directly from the smart contract.
+   * Returns amount in tinybars, or 0 if not found.
+   */
+  async getArbiterStakeFromContract(agentId: string): Promise<number> {
+    if (!this.stakingContract.isConfigured()) return 0;
+    try {
+      return await this.stakingContract.getArbiterStake(agentId);
+    } catch (e) {
+      this.logger.warn(`Failed to read arbiter stake from contract for ${agentId}: ${e.message}`);
+      return 0;
+    }
+  }
+
   async stakeAsArbiter(agentId: string, amount: number): Promise<{ stake: StakeEntity; txId?: string }> {
     if (amount < MIN_ARBITER_STAKE) {
       throw new Error(`Minimum arbiter stake is ${MIN_ARBITER_STAKE / 100_000_000} HBAR`);
+    }
+
+    // Check if already staked as arbiter on the smart contract
+    if (this.stakingContract.isConfigured()) {
+      try {
+        const existingArbiterStake = await this.stakingContract.getArbiterStake(agentId);
+        if (existingArbiterStake >= MIN_ARBITER_STAKE) {
+          this.logger.warn(`Agent ${agentId} already has arbiter stake of ${existingArbiterStake} tinybars on contract`);
+          // Sync DB and return existing stake without calling contract again
+          const stake = await this.getStake(agentId);
+          stake.arbiterStake = existingArbiterStake;
+          stake.arbiterEligible = true;
+          await this.stakeRepo.save(stake);
+          return { stake };
+        }
+      } catch (e) {
+        this.logger.warn(`Failed to check existing arbiter stake: ${e.message}`);
+      }
     }
 
     let txId: string | undefined;
