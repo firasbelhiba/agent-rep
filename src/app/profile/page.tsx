@@ -554,28 +554,23 @@ export default function ProfilePage() {
                     const amount = Number(arbiterAmount);
                     setArbiterLoading(true);
                     try {
-                      // Step 1: Call smart contract stakeAsArbiter() via wallet
-                      const STAKING_CONTRACT_ID = process.env.NEXT_PUBLIC_STAKING_CONTRACT_ID || '0.0.8289113';
-                      const txResult = await wallet.executeContractCall(
-                        STAKING_CONTRACT_ID,
-                        'stakeAsArbiter',
-                        amount,
-                        agent.agentId
-                      );
+                      // Step 1: Send HBAR to operator via HashPack wallet
+                      const txResult = await wallet.sendHbar(OPERATOR_ACCOUNT_ID, amount);
                       if (!txResult) throw new Error('Transaction rejected by wallet');
 
-                      // Step 2: Record in backend DB (contract already called by wallet above)
-                      await fetch(`${API_URL}/api/staking/arbiter/record`, {
+                      // Step 2: Backend calls stakeAsArbiter() on smart contract using operator key
+                      const res = await fetch(`${API_URL}/api/staking/arbiter/stake`, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json', 'X-Agent-Key': agent.apiKey },
-                        body: JSON.stringify({ amount, txId: txResult.transactionId }),
+                        body: JSON.stringify({ amount, paymentTxId: txResult.transactionId }),
                       });
-                      const data = await fetch(`${API_URL}/api/staking/arbiter/eligibility/${agent.agentId}`).then(r => r.json());
+                      const data = await res.json();
+                      if (!res.ok) throw new Error(data.message || 'Failed to stake');
                       if (data.arbiterEligible) {
-                        setArbiterResult({ success: true, message: `Arbiter stake of ${amount} HBAR deposited on smart contract! TX: ${txResult.transactionId}` });
+                        setArbiterResult({ success: true, message: `Arbiter stake of ${amount} HBAR deposited! TX: ${data.txId || txResult.transactionId}` });
                         setTimeout(() => { setArbiterAgent(null); window.location.reload(); }, 2500);
                       } else {
-                        setArbiterResult({ success: true, message: `${amount} HBAR staked on-chain (TX: ${txResult.transactionId}). You still need Trusted tier (score ≥ 500) and 10+ interactions.` });
+                        setArbiterResult({ success: true, message: `${amount} HBAR staked (TX: ${data.txId || txResult.transactionId}). You still need Trusted tier (score ≥ 500) and 10+ interactions.` });
                       }
                     } catch (err: unknown) {
                       setArbiterResult({ success: false, message: err instanceof Error ? err.message : 'Unknown error' });
