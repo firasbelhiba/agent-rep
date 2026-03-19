@@ -58,4 +58,16 @@ export class FeedbackEntity {
 
   @Column({ name: 'hcs_sequence_number', nullable: true })
   hcsSequenceNumber?: string;
+
+  // Validation status: 'unvalidated' | 'pending_validation' | 'validated' | 'no_validators'
+  @Column({ name: 'validation_status', default: 'unvalidated' })
+  validationStatus: string;
+
+  // JSON array of selected validator agent IDs
+  @Column({ name: 'assigned_validators', nullable: true })
+  assignedValidators?: string;
+
+  // Timestamp when validation was requested
+  @Column({ name: 'validation_requested_at', type: 'bigint', nullable: true })
+  validationRequestedAt?: number;
 }

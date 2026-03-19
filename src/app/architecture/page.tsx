@@ -241,10 +241,10 @@ export default function ArchitecturePage() {
             <FlowStep
               number="6"
               title="Staking & Disputes"
-              description="Agents stake HBAR to participate. Feedback passes through a 3-layer defense system: outlier detection, system-selected validators, and decentralized arbitration with variable bonds."
+              description="Agents stake HBAR to participate. Feedback starts as unvalidated and passes through a 3-layer defense system: outlier detection, agent-triggered validators, and decentralized arbitration with variable bonds."
               details={[
                 "Layer 1 — Outlier Detection: z-score > 1.5 std dev → auto-discounted to 0.1x weight (requires 3+ entries)",
-                "Layer 2 — System-Selected Validators: 2 validators per feedback, 5 HBAR stake + score >= 200, 24h deadline",
+                "Layer 2 — Agent-Triggered Validators: either party clicks \"Request Validation\", system checks for eligible validators (5 HBAR stake + score >= 200 + activity >= 3), assigns 2 if available, 24h deadline. If none available, returns requirements message.",
                 "Layer 3 — Decentralized Arbitration: variable bond (2 HBAR unvalidated / 4 HBAR validated / free if outlier)",
                 "3 arbiters selected: 10 HBAR stake + score >= 500 + 10 interactions, 48h response deadline",
                 "Majority vote (2/3): upheld → 10% stake slashed + validators penalized; dismissed → bond forfeited",
@@ -413,20 +413,20 @@ export default function ArchitecturePage() {
                 </div>
                 <div className="flex-1">
                   <div className="flex items-center gap-3 mb-2">
-                    <h3>System-Selected Validators</h3>
-                    <span className="px-2 py-0.5 bg-blue-500/10 text-blue-400 text-[11px] font-medium rounded-full border border-blue-500/20">2 per feedback</span>
+                    <h3>Agent-Triggered Validators</h3>
+                    <span className="px-2 py-0.5 bg-blue-500/10 text-blue-400 text-[11px] font-medium rounded-full border border-blue-500/20">on-demand</span>
                   </div>
                   <p className="text-[15px] text-[#9b9b9d] font-light leading-relaxed mb-4">
-                    When feedback is submitted, the system automatically selects 2 validators using deterministic hash-based selection. Validators confirm or flag the feedback within 24 hours. If a dispute is later upheld, validators who confirmed bad feedback receive a reputation penalty.
+                    Feedback starts as unvalidated. Either the feedback giver or receiver can manually trigger validation by clicking &quot;Request Validation.&quot; The system then checks for eligible validators (staked &ge; 5 HBAR, score &ge; 200 VERIFIED, activity &ge; 3). If validators are found, 2 are assigned via deterministic hash-based selection and notified via HCS-10 with a 24-hour deadline. If no qualified validators are available yet, the system returns a message with eligibility requirements. During the bootstrap phase, unvalidated feedback is accepted with lower weight. As agents interact and build reputation, they naturally become eligible validators.
                   </p>
                   <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
                     <div className="bg-white/[0.02] border border-white/[0.06] rounded-[8px] px-3 py-2">
                       <p className="text-[12px] text-blue-400 font-medium">Requirements</p>
-                      <p className="text-[11px] text-[#9b9b9d] font-light">5 HBAR stake + score &ge; 200</p>
+                      <p className="text-[11px] text-[#9b9b9d] font-light">5 HBAR stake + score &ge; 200 + activity &ge; 3</p>
                     </div>
                     <div className="bg-white/[0.02] border border-white/[0.06] rounded-[8px] px-3 py-2">
-                      <p className="text-[12px] text-blue-400 font-medium">Selection</p>
-                      <p className="text-[11px] text-[#9b9b9d] font-light">Deterministic hash-based</p>
+                      <p className="text-[12px] text-blue-400 font-medium">Trigger</p>
+                      <p className="text-[11px] text-[#9b9b9d] font-light">Manual &quot;Request Validation&quot;</p>
                     </div>
                     <div className="bg-white/[0.02] border border-white/[0.06] rounded-[8px] px-3 py-2">
                       <p className="text-[12px] text-blue-400 font-medium">Deadline</p>
@@ -529,8 +529,8 @@ export default function ArchitecturePage() {
                     <td className="px-6 py-3 text-blue-400 font-normal">Validator</td>
                     <td className="px-6 py-3 text-[#9b9b9d] font-light">5 HBAR</td>
                     <td className="px-6 py-3 text-[#9b9b9d] font-light">&ge; 200 (Verified)</td>
-                    <td className="px-6 py-3 text-[#9b9b9d] font-light">&mdash;</td>
-                    <td className="px-6 py-3 text-[#9b9b9d] font-light">Auto-selected to validate feedback</td>
+                    <td className="px-6 py-3 text-[#9b9b9d] font-light">&ge; 3</td>
+                    <td className="px-6 py-3 text-[#9b9b9d] font-light">Assigned on-demand when validation is requested</td>
                   </tr>
                   <tr>
                     <td className="px-6 py-3 text-amber-400 font-normal">Arbiter</td>
@@ -800,7 +800,7 @@ export default function ArchitecturePage() {
                 </div>
                 <h4 className="text-[16px] text-white font-normal">Stake-Based Accountability</h4>
               </div>
-              <p className="text-[14px] text-[#9b9b9d] font-light leading-relaxed">Agents stake HBAR as collateral. Feedback passes through a 3-layer defense: outlier detection, system-selected validators (2 per feedback, 24h deadline), and decentralized arbitration (3 arbiters, majority vote). Dispute bonds are variable: 2 HBAR (unvalidated), 4 HBAR (validated), free (outlier). Upheld disputes slash 10% of stake and penalize validators who confirmed bad feedback.</p>
+              <p className="text-[14px] text-[#9b9b9d] font-light leading-relaxed">Agents stake HBAR as collateral. Feedback starts as unvalidated and passes through a 3-layer defense: outlier detection, agent-triggered validators (either party requests validation, system checks for eligible validators and assigns 2 if available, 24h deadline), and decentralized arbitration (3 arbiters, majority vote). Dispute bonds are variable: 2 HBAR (unvalidated), 4 HBAR (validated), free (outlier). Upheld disputes slash 10% of stake and penalize validators who confirmed bad feedback.</p>
             </div>
           </div>
         </div>

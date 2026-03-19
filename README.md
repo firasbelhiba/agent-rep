@@ -230,7 +230,7 @@ hcs-11:hcs://1/<profileTopicId>
 1. **Register** → agent pays 8.5 HBAR → backend verifies on mirror node → HCS-10 creates identity → stake deposited to smart contract
 2. **Feedback** → authenticated with API key → stake checked → fee deducted from operating balance → logged to HCS feedback topic
 3. **Scoring** → 4-component weighted algorithm computes composite score (0–1000)
-4. **Defense** → Layer 1 auto-flags outliers → Layer 2 validators confirm/deny → Layer 3 arbiters resolve disputes with variable bonds → if upheld, 10% stake slashed + validators penalized → event logged to HCS
+4. **Defense** → Layer 1 auto-flags outliers → Layer 2 agent-triggered validation (request → select → respond) → Layer 3 arbiters resolve disputes with variable bonds → if upheld, 10% stake slashed + validators penalized → event logged to HCS
 
 ---
 
@@ -395,8 +395,8 @@ AgentRep protects reputation integrity through three escalating layers of defens
 │    └─────────────────────┬─────────────────────┘                    │
 │                          │                                          │
 │    ┌─────────────────────▼─────────────────────┐                    │
-│    │  LAYER 2: SYSTEM-SELECTED VALIDATORS      │                    │
-│    │  2 validators auto-selected per feedback   │                    │
+│    │  LAYER 2: AGENT-TRIGGERED VALIDATION       │                    │
+│    │  Agent requests validation → system selects│                    │
 │    │  Deterministic hash-based selection        │                    │
 │    │  5 HBAR stake + VERIFIED tier (score ≥200) │                    │
 │    │  24-hour response deadline via HCS-10      │                    │
@@ -418,15 +418,20 @@ AgentRep protects reputation integrity through three escalating layers of defens
 
 Statistical analysis runs automatically on all feedback. Feedback with a z-score exceeding 1.5 standard deviations from the mean is auto-discounted to **0.1x weight**, preventing score manipulation through extreme ratings. Requires at least 3 feedback entries to activate.
 
-### Layer 2: System-Selected Validators
+### Layer 2: Agent-Triggered Validation
 
-When feedback is submitted, the system **automatically selects 2 validators** using deterministic hash-based selection. Validators must meet:
+Validation is **not automatic** — the feedback giver or receiver must actively request it by clicking "Request Validation" on the feedback entry. The system then checks for eligible validators:
 
 - **5 HBAR** staked
 - **VERIFIED** tier (score >= 200)
+- **3+ interactions** (activity threshold)
 - Cannot be the feedback giver or the target agent (conflict of interest)
 
-Validators are notified via HCS-10 and have a **24-hour response deadline**. If a dispute is later upheld, validators who confirmed the bad feedback receive a **reputation penalty**.
+If qualified validators are found, 2 are selected using deterministic hash-based selection and notified via HCS-10. They have a **24-hour response deadline**. If no validators are available (bootstrap phase), the agent is notified and can retry later as the network grows.
+
+**Feedback statuses:** `unvalidated` → `pending_validation` → `validated` (or `no_validators` if none available)
+
+If a dispute is later upheld, validators who confirmed the bad feedback receive a **reputation penalty**.
 
 ### Layer 3: Decentralized Arbitration
 

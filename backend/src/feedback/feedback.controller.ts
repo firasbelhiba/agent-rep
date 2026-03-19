@@ -319,31 +319,7 @@ export class FeedbackController {
 
     const reputation = await this.reputationService.computeReputation(agentId);
 
-    // Auto-select validators for this feedback (system-selected, not user-chosen)
-    let selectedValidators: string[] = [];
-    try {
-      selectedValidators = await this.stakingService.autoSelectValidatorsForFeedback(
-        saved.feedbackId,
-        fromAgentId,
-        agentId,
-      );
-      if (selectedValidators.length > 0) {
-        this.logger.log(`Auto-selected ${selectedValidators.length} validators for feedback ${saved.feedbackId}: ${selectedValidators.join(', ')}`);
-        // Notify validators via HCS-10 (fire and forget)
-        this.hcs10Service?.notifyValidators?.(selectedValidators, {
-          feedbackId: saved.feedbackId,
-          targetAgentId: agentId,
-          feedbackGiverId: fromAgentId,
-          value: Number(value),
-          tag1,
-          deadline: Date.now() + 24 * 60 * 60 * 1000, // 24 hours
-        }).catch((e: any) => this.logger.warn(`Failed to notify validators: ${e.message}`));
-      }
-    } catch (e: any) {
-      this.logger.warn(`Auto-validator selection failed: ${e.message}`);
-    }
-
-    return { feedback: saved, reputation, hcsSequenceNumber, selectedValidators };
+    return { feedback: saved, reputation, hcsSequenceNumber, validationStatus: 'unvalidated' };
   }
 
   /**
@@ -528,6 +504,106 @@ export class FeedbackController {
     }
 
     return { success: true };
+  }
+
+  /**
+   * Request validation for a specific feedback.
+   * Agent-triggered — the system checks for eligible validators.
+   * Returns validator list or "no validators available" message.
+   */
+  @Post(':id/request-validation')
+  async requestValidation(
+    @Param('id') feedbackId: string,
+    @Headers('x-agent-key') apiKey: string | undefined,
+  ) {
+    const requester = await this.authenticateAgent(apiKey);
+
+    const feedback = await this.feedbackService.findById(feedbackId);
+    if (!feedback) {
+      throw new HttpException('Feedback not found', HttpStatus.NOT_FOUND);
+    }
+
+    // Only the feedback giver or receiver can request validation
+    if (feedback.fromAgentId !== requester.agentId && feedback.agentId !== requester.agentId) {
+      throw new HttpException(
+        'Only the feedback giver or receiver can request validation',
+        HttpStatus.FORBIDDEN,
+      );
+    }
+
+    // Check if already validated or pending
+    if (feedback.validationStatus === 'validated') {
+      return { status: 'already_validated', message: 'This feedback has already been validated.' };
+    }
+    if (feedback.validationStatus === 'pending_validation') {
+      return { status: 'pending', message: 'Validation is already in progress. Validators have 24 hours to respond.' };
+    }
+
+    // Select validators
+    let selectedValidators: string[] = [];
+    try {
+      selectedValidators = await this.stakingService.autoSelectValidatorsForFeedback(
+        feedbackId,
+        feedback.fromAgentId,
+        feedback.agentId,
+      );
+    } catch (e: any) {
+      this.logger.warn(`Validator selection failed: ${e.message}`);
+    }
+
+    if (selectedValidators.length === 0) {
+      // Update status
+      feedback.validationStatus = 'no_validators';
+      await this.feedbackService.create(feedback);
+
+      return {
+        status: 'no_validators',
+        message: 'No qualified validators available yet. Requirements: staked ≥ 5 HBAR, score ≥ 200 (VERIFIED tier), activity ≥ 3 interactions. Try again as the network grows.',
+        eligibilityRequirements: {
+          minStake: '5 HBAR',
+          minScore: 200,
+          minTier: 'VERIFIED',
+          minActivity: 3,
+        },
+      };
+    }
+
+    // Update feedback with validators
+    feedback.validationStatus = 'pending_validation';
+    feedback.assignedValidators = JSON.stringify(selectedValidators);
+    feedback.validationRequestedAt = Date.now();
+    await this.feedbackService.create(feedback);
+
+    this.logger.log(`Validation requested for feedback ${feedbackId}: ${selectedValidators.length} validators selected`);
+
+    // Log to HCS
+    if (this.hederaConfig.isConfigured()) {
+      const topics = await this.systemConfig.getHCSTopics();
+      if (topics.validation) {
+        try {
+          await this.hcsService.logInteraction(
+            topics.validation,
+            HCSMessageType.VALIDATION_REQUESTED,
+            {
+              feedbackId,
+              targetAgentId: feedback.agentId,
+              feedbackGiverId: feedback.fromAgentId,
+              selectedValidators,
+              deadline: Date.now() + 24 * 60 * 60 * 1000,
+            },
+          );
+        } catch (e) {
+          this.logger.warn('Failed to log validation request to HCS', e);
+        }
+      }
+    }
+
+    return {
+      status: 'validators_assigned',
+      message: `${selectedValidators.length} validator(s) selected. They have 24 hours to respond via HCS-10.`,
+      validators: selectedValidators,
+      deadline: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+    };
   }
 
   /**

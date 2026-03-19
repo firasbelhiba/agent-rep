@@ -1,11 +1,7 @@
 #!/usr/bin/env node
 // ============================================================
-//  AgentRep — AI Agent Interaction Demo
-//  Two AI agents (DeepSeek + Llama) interact via HCS-10,
-//  rate each other, and trigger the reputation protocol.
-//
+//  AgentRep — Interactive Demo Menu
 //  Usage: node scripts/ai-demo.mjs
-//  Requires: GROQ_API_KEY env var (free at https://console.groq.com/keys)
 // ============================================================
 
 import readline from 'readline';
@@ -30,40 +26,14 @@ const GROQ_API_KEY = process.env.GROQ_API_KEY || '';
 
 // ---- ANSI Colors ----
 const c = {
-  reset: '\x1b[0m',
-  bold: '\x1b[1m',
-  dim: '\x1b[2m',
-  purple: '\x1b[38;5;141m',
-  green: '\x1b[38;5;114m',
-  cyan: '\x1b[38;5;81m',
-  yellow: '\x1b[38;5;221m',
-  red: '\x1b[38;5;203m',
-  white: '\x1b[37m',
-  gray: '\x1b[90m',
-  bg: '\x1b[48;5;236m',
+  reset: '\x1b[0m', bold: '\x1b[1m', dim: '\x1b[2m',
+  purple: '\x1b[38;5;141m', green: '\x1b[38;5;114m',
+  cyan: '\x1b[38;5;81m', yellow: '\x1b[38;5;221m',
+  red: '\x1b[38;5;203m', white: '\x1b[37m', gray: '\x1b[90m',
+  orange: '\x1b[38;5;208m',
 };
 
 // ---- Helpers ----
-function banner() {
-  console.clear();
-  console.log(`
-${c.purple}${c.bold}  ╔════════════════════════════════════════════════════╗
-  ║                                                    ║
-  ║     █████╗  ██████╗ ███████╗███╗   ██╗████████╗    ║
-  ║    ██╔══██╗██╔════╝ ██╔════╝████╗  ██║╚══██╔══╝    ║
-  ║    ███████║██║  ███╗█████╗  ██╔██╗ ██║   ██║       ║
-  ║    ██╔══██║██║   ██║██╔══╝  ██║╚██╗██║   ██║       ║
-  ║    ██║  ██║╚██████╔╝███████╗██║ ╚████║   ██║       ║
-  ║    ╚═╝  ╚═╝ ╚═════╝ ╚══════╝╚═╝  ╚═══╝   ╚═╝       ║
-  ║              ${c.green}R E P${c.purple}                                    ║
-  ║                                                    ║
-  ║     ${c.cyan}AI Agent Interaction Demo${c.purple}                       ║
-  ║     ${c.gray}HCS-10 · ERC-8004 · Hedera Testnet${c.purple}             ║
-  ║                                                    ║
-  ╚════════════════════════════════════════════════════╝${c.reset}
-`);
-}
-
 function log(prefix, color, msg) {
   const ts = new Date().toLocaleTimeString();
   console.log(`  ${c.gray}${ts}${c.reset}  ${color}${c.bold}${prefix}${c.reset}  ${msg}`);
@@ -73,11 +43,15 @@ function divider(title) {
   console.log(`\n  ${c.purple}${'─'.repeat(20)} ${c.bold}${title} ${c.reset}${c.purple}${'─'.repeat(20)}${c.reset}\n`);
 }
 
-function waitForEnter(msg = 'Press ENTER to continue...') {
+function ask(question) {
   return new Promise(resolve => {
     const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
-    rl.question(`\n  ${c.dim}${msg}${c.reset}`, () => { rl.close(); resolve(); });
+    rl.question(question, answer => { rl.close(); resolve(answer.trim()); });
   });
+}
+
+function waitForEnter(msg = 'Press ENTER to continue...') {
+  return ask(`\n  ${c.dim}${msg}${c.reset}`);
 }
 
 async function api(path, opts = {}) {
@@ -91,391 +65,548 @@ async function api(path, opts = {}) {
 
 async function aiChat(model, systemPrompt, userMessage) {
   if (!GROQ_API_KEY) {
-    // Fallback mock responses if no API key
-    const mocks = {
-      'deepseek': `I've reviewed the request carefully. Based on my analysis, here are the key points:\n1. The contract terms appear standard but Section 3.2 needs revision\n2. The non-compete clause is overly broad — under EU Directive 2019/1152, non-competes must be proportionate\n3. Recommended changes: narrow the geographic scope and reduce duration to 12 months.`,
-      'llama': `Thank you for the thorough review! I agree with your assessment. The candidate has been informed about the contract revisions. We'll proceed with the updated terms. Your expertise in legal compliance has been invaluable for this process.`,
-    };
-    const key = model.includes('deepseek') ? 'deepseek' : 'llama';
-    await new Promise(r => setTimeout(r, 1500)); // simulate delay
-    return mocks[key];
+    await new Promise(r => setTimeout(r, 1000));
+    return 'Mock response — set GROQ_API_KEY in backend/.env for real AI responses.';
   }
-
   const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
     method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${GROQ_API_KEY}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      model,
-      messages: [
-        { role: 'system', content: systemPrompt },
-        { role: 'user', content: userMessage },
-      ],
-      max_tokens: 200,
-      temperature: 0.7,
-    }),
+    headers: { 'Authorization': `Bearer ${GROQ_API_KEY}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ model, messages: [{ role: 'system', content: systemPrompt }, { role: 'user', content: userMessage }], max_tokens: 200, temperature: 0.7 }),
   });
   const data = await res.json();
   let content = data.choices?.[0]?.message?.content || 'No response generated.';
-  // Strip thinking tags from models like Qwen/DeepSeek
   content = content.replace(/<think>[\s\S]*?<\/think>\s*/g, '').trim();
   return content;
 }
 
-// ---- Agent Config ----
-const AGENTS = {
-  mariposa: {
-    name: 'Mariposa',
-    model: 'qwen/qwen3-32b',
-    systemPrompt: 'You are Mariposa, an AI legal document reviewer. You specialize in contract compliance, NDA analysis, and employment law. Keep responses concise (2-3 sentences max). Be professional and specific. Do not use any thinking tags or internal reasoning — just respond directly. IMPORTANT: Never repeat or echo the other person\'s message — always provide your own original response.',
-    color: c.cyan,
-    apiKey: null,
-    agentId: null,
-  },
-  talentai: {
-    name: 'TalentAI',
-    model: 'llama-3.3-70b-versatile',
-    systemPrompt: 'You are TalentAI, an AI talent recruiter. You help companies find candidates and manage hiring processes. Keep responses concise (2-3 sentences max). Be friendly and efficient.',
-    color: c.green,
-    agentId: null,
-    apiKey: null,
-  },
+// ---- Agent Models ----
+const MODELS = {
+  'Mariposa': { model: 'qwen/qwen3-32b', label: 'Qwen3 32B', color: c.cyan, systemPrompt: 'You are Mariposa, an AI legal document reviewer. You specialize in contract compliance, NDA analysis, and employment law. Keep responses concise (2-3 sentences max). Be professional and specific. Do not use any thinking tags. Never repeat the other person\'s message.' },
+  'TalentAI': { model: 'llama-3.3-70b-versatile', label: 'Llama 3.3 70B', color: c.green, systemPrompt: 'You are TalentAI, an AI talent recruiter. You help companies find candidates and manage hiring processes. Keep responses concise (2-3 sentences max). Be friendly and efficient.' },
+  'AuditBot': { model: 'meta-llama/llama-4-scout-17b-16e-instruct', label: 'Llama 4 Scout', color: c.orange, systemPrompt: 'You are AuditBot, an AI security auditor. You review agent interactions for quality, accuracy, and compliance. Keep responses concise (2-3 sentences max). Be objective and analytical.' },
 };
 
-// ---- Main Flow ----
-async function main() {
-  banner();
+// ---- State ----
+let agents = [];
 
-  // Step 0: Load agents
-  divider('LOADING AGENTS');
-  log('SDK', c.purple, 'Connecting to AgentRep backend...');
-
-  const agentsRes = await api('/agents');
-  const agentList = agentsRes.agents || agentsRes;
-
-  for (const item of agentList) {
+// ---- Load Agents ----
+async function loadAgents() {
+  log('SDK', c.purple, 'Loading agents from backend...');
+  const res = await api('/agents');
+  const list = res.agents || res;
+  agents = list.map(item => {
     const a = item.agent || item;
-    if (a.name === 'Mariposa') {
-      AGENTS.mariposa.agentId = a.agentId;
-      AGENTS.mariposa.apiKey = a.apiKey;
-      log('✓', c.green, `Mariposa loaded — ${c.gray}${a.agentId}${c.reset} — Model: Qwen3 32B`);
-    }
-    if (a.name === 'TalentAI') {
-      AGENTS.talentai.agentId = a.agentId;
-      AGENTS.talentai.apiKey = a.apiKey;
-      log('✓', c.green, `TalentAI loaded — ${c.gray}${a.agentId}${c.reset} — Model: Llama 3.3 70B`);
-    }
-  }
-
-  if (!AGENTS.mariposa.agentId || !AGENTS.talentai.agentId) {
-    console.log(`\n  ${c.red}Error: Could not find both agents. Make sure Mariposa and TalentAI are registered.${c.reset}`);
+    const modelInfo = MODELS[a.name] || { model: 'llama-3.3-70b-versatile', label: 'Llama 3.3', color: c.white, systemPrompt: `You are ${a.name}, an AI agent. Keep responses concise.` };
+    return { ...a, ...modelInfo };
+  });
+  agents.forEach(a => log('✓', c.green, `${a.color}${a.name}${c.reset} — ${c.gray}${a.agentId}${c.reset} — ${a.label}`));
+  if (agents.length === 0) {
+    console.log(`\n  ${c.red}No agents found. Register agents at agentrep.xyz first.${c.reset}`);
     process.exit(1);
   }
+}
 
-  if (!GROQ_API_KEY) {
-    console.log(`\n  ${c.yellow}⚠ No GROQ_API_KEY set — using mock AI responses${c.reset}`);
-    console.log(`  ${c.gray}Get a free key at https://console.groq.com/keys${c.reset}`);
-  }
-
-  await waitForEnter();
-
-  // Step 1: Check Reputation
-  divider('STEP 1 — CHECK REPUTATION');
-  log('SDK', c.purple, 'client.getReputation(mariposa) — Checking trust before interaction...');
-
-  const mariposaRep = await api(`/agents/${AGENTS.mariposa.agentId}`);
-  const talentRep = await api(`/agents/${AGENTS.talentai.agentId}`);
-
-  const mScore = mariposaRep.reputation?.overallScore || 0;
-  const tScore = talentRep.reputation?.overallScore || 0;
-  const mTier = mariposaRep.reputation?.trustTier || 'UNVERIFIED';
-  const tTier = talentRep.reputation?.trustTier || 'UNVERIFIED';
-
-  console.log(`
-  ┌──────────────┬───────────┬──────────────┐
-  │ Agent        │ Score     │ Tier         │
-  ├──────────────┼───────────┼──────────────┤
-  │ ${c.cyan}Mariposa${c.reset}     │ ${c.bold}${mScore}/1000${c.reset}  │ ${mTier.padEnd(12)} │
-  │ ${c.green}TalentAI${c.reset}     │ ${c.bold}${tScore}/1000${c.reset}  │ ${tTier.padEnd(12)} │
-  └──────────────┴───────────┴──────────────┘`);
-
-  log('SDK', c.purple, 'TalentAI decides Mariposa is trustworthy enough to interact with.');
-
-  await waitForEnter();
-
-  // Step 2: Establish Connection via HCS-10
-  divider('STEP 2 — HCS-10 CONNECTION');
-  log('HCS-10', c.cyan, 'Checking for existing connection between agents...');
-
-  const connections = await api(`/connections/${AGENTS.mariposa.agentId}`);
-  let connectionTopicId = null;
-
-  if (connections.connections && connections.connections.length > 0) {
-    const conn = connections.connections.find(c =>
-      c.requesterAgentId === AGENTS.talentai.agentId ||
-      c.targetAgentId === AGENTS.talentai.agentId
-    ) || connections.connections[0];
-    connectionTopicId = conn.connectionTopicId;
-    log('✓', c.green, `Existing connection found — Topic: ${c.gray}${connectionTopicId}${c.reset}`);
-  } else {
-    log('→', c.yellow, 'No existing connection. Creating one...');
-    try {
-      const connRes = await api('/connections/request', {
-        method: 'POST',
-        headers: { 'X-Agent-Key': AGENTS.talentai.apiKey },
-        body: JSON.stringify({ targetAgentId: AGENTS.mariposa.agentId }),
-      });
-      connectionTopicId = connRes.connectionTopicId;
-      log('✓', c.green, `Connection established — Topic: ${c.gray}${connectionTopicId}${c.reset}`);
-    } catch (e) {
-      log('⚠', c.yellow, 'Could not create connection, using mock topic');
-      connectionTopicId = 'mock-topic';
-    }
-  }
-
-  log('HCS-10', c.cyan, `All messages will flow through shared HCS topic ${c.gray}${connectionTopicId}${c.reset}`);
-
-  await waitForEnter();
-
-  // Step 3: AI Conversation
-  divider('STEP 3 — AI AGENT CONVERSATION');
-
-  // Ask user what TalentAI should request from Mariposa
-  const userTopic = await new Promise(resolve => {
-    const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
-    rl.question(`  ${c.green}${c.bold}What should TalentAI ask Mariposa?${c.reset}\n  ${c.gray}(e.g. "Review an NDA for a remote EU developer with a 2-year non-compete")${c.reset}\n\n  ${c.purple}→ ${c.reset}`, (answer) => {
-      rl.close();
-      resolve(answer.trim() || 'Review an employment contract for a remote EU senior developer with a 2-year non-compete clause. Check for compliance issues.');
-    });
-  });
-
+// ---- Select Agent ----
+function selectAgent(prompt, exclude = []) {
+  const available = agents.filter(a => !exclude.includes(a.agentId));
   console.log();
-  log('SDK', c.purple, `TalentAI will ask Mariposa: "${c.white}${userTopic}${c.reset}"`);
+  available.forEach((a, i) => {
+    const rep = a.reputation || {};
+    console.log(`  ${c.bold}${i + 1}.${c.reset} ${a.color}${a.name}${c.reset} ${c.gray}(${a.agentId})${c.reset} — Score: ${rep.overallScore || 0}/1000 — ${rep.trustTier || 'UNVERIFIED'}`);
+  });
+  return ask(`\n  ${prompt} ${c.purple}→ ${c.reset}`).then(n => available[parseInt(n) - 1] || available[0]);
+}
 
-  // Generate TalentAI's opening message from the user's topic
-  log('TalentAI', c.green, `${c.dim}Composing request...${c.reset}`);
-  const openingMessage = await aiChat(
-    AGENTS.talentai.model,
-    AGENTS.talentai.systemPrompt,
-    `You need to ask a legal document reviewer named Mariposa to help you with this: "${userTopic}". Write a professional message requesting their help. Be specific about what you need.`
-  );
-
-  // Fully autonomous 4-turn conversation — each agent responds to the previous message
-  const chatHistory = [];
-  const turns = [
-    { from: 'talentai', text: openingMessage },
-    { from: 'mariposa', respondTo: openingMessage },
-    { from: 'talentai', respondTo: null }, // will be filled with mariposa's response
-    { from: 'mariposa', respondTo: null }, // will be filled with talentai's response
-  ];
-
-  for (let i = 0; i < turns.length; i++) {
-    const turn = turns[i];
-    const agent = AGENTS[turn.from];
-    let text;
-
-    if (turn.text) {
-      // First message (already generated)
-      text = turn.text;
-    } else {
-      // Respond to the previous message
-      const prevMessage = chatHistory[chatHistory.length - 1];
-      log(agent.name, agent.color, `${c.dim}Thinking...${c.reset}`);
-      text = await aiChat(
-        agent.model,
-        agent.systemPrompt,
-        `${prevMessage.from} said: "${prevMessage.text}"\n\nRespond naturally to continue this professional conversation.`
-      );
-    }
-
-    chatHistory.push({ from: agent.name, text });
-
-    // Display message
-    console.log(`\n  ${agent.color}${c.bold}  ${agent.name}:${c.reset}`);
-    const lines = text.split('\n');
-    for (const line of lines) {
-      console.log(`  ${c.white}  ${line}${c.reset}`);
-    }
-
-    // Send via HCS-10
-    if (connectionTopicId && connectionTopicId !== 'mock-topic') {
-      try {
-        await api('/connections/message', {
-          method: 'POST',
-          headers: { 'X-Agent-Key': agent.apiKey },
-          body: JSON.stringify({
-            connectionTopicId,
-            message: text,
-            sender: agent.agentId,
-          }),
-        });
-        log('HCS', c.gray, `Message logged to topic ${connectionTopicId}`);
-      } catch (e) {
-        log('HCS', c.gray, `Message recorded locally`);
-      }
-    }
-
-    await new Promise(r => setTimeout(r, 1000));
-  }
-
-  await waitForEnter();
-
-  // Step 4: Autonomous Feedback
-  divider('STEP 4 — AUTONOMOUS FEEDBACK');
-  log('SDK', c.purple, 'TalentAI autonomously evaluates the interaction with Mariposa...');
-  log('AI', c.green, `${c.dim}Analyzing conversation quality...${c.reset}`);
-
-  // Ask TalentAI's LLM to evaluate Mariposa's responses
-  const conversationSummary = chatHistory.map(m => `${m.from}: ${m.text}`).join('\n');
-  const ratingPrompt = `You just had this conversation with Mariposa (a legal document reviewer):
-
-${conversationSummary}
-
-Based on this interaction, rate Mariposa's performance on a scale of 1-100. Consider:
-- Accuracy of legal advice
-- Specificity of recommendations
-- Professionalism and clarity
-
-Reply ONLY with a JSON object, no other text: {"score": <number>, "comment": "<one sentence justification>"}`;
-
-  let feedbackScore = 85;
-  let feedbackComment = 'Excellent compliance analysis with actionable recommendations.';
-
-  try {
-    const ratingResponse = await aiChat(AGENTS.talentai.model, 'You are an AI agent evaluating another agent. Respond only with valid JSON.', ratingPrompt);
-    const parsed = JSON.parse(ratingResponse.replace(/```json?\n?/g, '').replace(/```/g, '').trim());
-    feedbackScore = Math.min(100, Math.max(1, parseInt(parsed.score) || 85));
-    feedbackComment = parsed.comment || feedbackComment;
-    log('AI', c.green, `TalentAI autonomously decided: Score ${c.bold}${feedbackScore}/100${c.reset}`);
-    console.log(`  ${c.gray}  Reasoning: "${feedbackComment}"${c.reset}`);
-  } catch (e) {
-    log('AI', c.green, `TalentAI decided: Score ${c.bold}${feedbackScore}/100${c.reset} (fallback)`);
-  }
-
-  const displayTag = 'legal-review';
-  const uniqueTag = displayTag + '-' + Date.now().toString(36).slice(-4);
-  console.log(`\n  ${c.green}TalentAI${c.reset} → ${c.cyan}Mariposa${c.reset}: Score ${c.bold}${feedbackScore}/100${c.reset} (${feedbackScore >= 60 ? c.green + 'Positive' : c.red + 'Negative'}${c.reset})`);
-  console.log(`  ${c.gray}Category: ${displayTag} | Submitted via SDK${c.reset}`);
-
-  try {
-    const fbRes = await api('/feedback', {
-      method: 'POST',
-      headers: { 'X-Agent-Key': AGENTS.talentai.apiKey },
-      body: JSON.stringify({
-        agentId: AGENTS.mariposa.agentId,
-        value: feedbackScore,
-        tag1: uniqueTag,
-        tag2: 'compliance',
-        comment: feedbackComment,
-      }),
-    });
-    log('✓', c.green, `Feedback submitted — ID: ${c.gray}${fbRes.feedback?.feedbackId || 'recorded'}${c.reset}`);
-    log('HCS', c.cyan, `FEEDBACK_SUBMITTED logged to Feedback Topic ${c.gray}0.0.8264959${c.reset}`);
-
-    // Show weight calculation
-    const weight = (0.2 + 0.8 * (tScore / 1000)).toFixed(3);
-    log('ALGO', c.yellow, `Feedback weight = 0.2 + 0.8 × (${tScore}/1000) = ${c.bold}${weight}${c.reset}`);
-  } catch (e) {
-    log('⚠', c.yellow, `Feedback submission: ${e.message || 'recorded locally'}`);
-  }
-
-  await waitForEnter();
-
-  // Step 5: Updated Reputation
-  divider('STEP 5 — REPUTATION UPDATE');
-  log('SDK', c.purple, 'client.getReputation(mariposa) — Checking updated score...');
-
-  const updatedRep = await api(`/agents/${AGENTS.mariposa.agentId}`);
-  const newScore = updatedRep.reputation?.overallScore || 0;
-  const newTier = updatedRep.reputation?.trustTier || 'UNVERIFIED';
-  const fbCount = updatedRep.reputation?.feedbackCount || 0;
-
+// ---- Banner ----
+function banner() {
+  console.clear();
   console.log(`
-  ┌──────────────────────────────────────────────────┐
-  │  ${c.cyan}${c.bold}Mariposa — Updated Reputation${c.reset}                    │
-  ├──────────────────────────────────────────────────┤
-  │  Score:     ${c.bold}${String(newScore).padEnd(4)}${c.reset} / 1000                         │
-  │  Tier:      ${c.bold}${newTier.padEnd(12)}${c.reset}                       │
-  │  Feedback:  ${c.bold}${fbCount}${c.reset} received                            │
-  │  Change:    ${newScore > mScore ? c.green + '▲' : c.red + '▼'} ${Math.abs(newScore - mScore)} points${c.reset}                          │
-  └──────────────────────────────────────────────────┘`);
-
-  log('ERC-8004', c.purple, 'Score computed: Quality 30% + Reliability 30% + Activity 20% + Consistency 20%');
-
-  await waitForEnter();
-
-  // Step 6: Validation
-  divider('STEP 6 — CROSS-VALIDATION');
-  log('SDK', c.purple, 'TalentAI requests validation of Mariposa from peer agents...');
-
-  try {
-    const valRes = await api('/validation/request', {
-      method: 'POST',
-      headers: { 'X-Agent-Key': AGENTS.talentai.apiKey },
-      body: JSON.stringify({
-        agentId: AGENTS.mariposa.agentId,
-        question: 'Is Mariposa reliable for legal document review based on observed interactions?',
-      }),
-    });
-    log('✓', c.green, `Validation requested — ${c.gray}${valRes.request?.requestId || 'recorded'}${c.reset}`);
-    log('HCS', c.cyan, `VALIDATION_REQUESTED logged to Validation Topic ${c.gray}0.0.8264962${c.reset}`);
-
-    // Submit validation response
-    if (valRes.request?.requestId) {
-      const submitRes = await api('/validation/respond', {
-        method: 'POST',
-        headers: { 'X-Agent-Key': AGENTS.talentai.apiKey },
-        body: JSON.stringify({
-          requestId: valRes.request.requestId,
-          score: 80,
-          comment: 'Mariposa provided accurate legal analysis with specific EU compliance recommendations.',
-        }),
-      });
-      log('✓', c.green, `Validation response submitted — Score: ${c.bold}80/100${c.reset}`);
-      log('HCS', c.cyan, `VALIDATION_RESPONDED logged to Validation Topic`);
-    }
-  } catch (e) {
-    log('⚠', c.yellow, `Validation: ${e.message || 'skipped'}`);
-  }
-
-  await waitForEnter();
-
-  // Step 7: Summary
-  divider('DEMO COMPLETE');
-
-  const finalRep = await api(`/agents/${AGENTS.mariposa.agentId}`);
-  const finalScore = finalRep.reputation?.overallScore || 0;
-  const finalTier = finalRep.reputation?.trustTier || 'UNVERIFIED';
-
-  console.log(`
-  ${c.purple}${c.bold}╔════════════════════════════════════════════════════╗
-  ║              Demo Summary                          ║
-  ╠════════════════════════════════════════════════════╣${c.reset}
-  ║  ${c.cyan}Standards Used:${c.reset}                                    ║
-  ║    • HCS-10  — Agent-to-agent messaging            ║
-  ║    • HCS-11  — Agent identity profiles             ║
-  ║    • ERC-8004 — Reputation registries               ║
-  ║                                                    ║
-  ║  ${c.green}Actions Performed:${c.reset}                                  ║
-  ║    • Reputation check before interaction            ║
-  ║    • HCS-10 connection established                  ║
-  ║    • AI-powered conversation (2 models)             ║
-  ║    • Feedback submitted on-chain                    ║
-  ║    • Cross-validation requested & responded         ║
-  ║                                                    ║
-  ║  ${c.yellow}Final Results:${c.reset}                                      ║
-  ║    Mariposa:  ${c.bold}${finalScore}/1000${c.reset} (${finalTier})                   ║
-  ║                                                    ║
-  ║  ${c.gray}All events immutably logged on Hedera Testnet${c.reset}      ║
-  ║  ${c.gray}Smart Contract: 0.0.8278509${c.reset}                        ║
-  ║  ${c.gray}agentrep.xyz${c.reset}                                       ║
-  ${c.purple}${c.bold}╚════════════════════════════════════════════════════╝${c.reset}
+${c.purple}${c.bold}  ╔════════════════════════════════════════════════════╗
+  ║     █████╗  ██████╗ ███████╗███╗   ██╗████████╗    ║
+  ║    ██╔══██╗██╔════╝ ██╔════╝████╗  ██║╚══██╔══╝    ║
+  ║    ███████║██║  ███╗█████╗  ██╔██╗ ██║   ██║       ║
+  ║    ██╔══██║██║   ██║██╔══╝  ██║╚██╗██║   ██║       ║
+  ║    ██║  ██║╚██████╔╝███████╗██║ ╚████║   ██║       ║
+  ║    ╚═╝  ╚═╝ ╚═════╝ ╚══════╝╚═╝  ╚═══╝   ╚═╝       ║
+  ║              ${c.green}R E P${c.purple}                                    ║
+  ║     ${c.cyan}Interactive Demo${c.purple}                                ║
+  ║     ${c.gray}HCS-10 · ERC-8004 · Hedera Testnet${c.purple}             ║
+  ╚════════════════════════════════════════════════════╝${c.reset}
 `);
 }
 
+// ---- Menu ----
+async function showMenu() {
+  console.log(`
+  ${c.purple}${c.bold}╔════════════════════════════════════════════╗
+  ║              DEMO MENU                     ║
+  ╠════════════════════════════════════════════╣${c.reset}
+  ║  ${c.green}1.${c.reset} Agent Conversation (AI-powered)        ║
+  ║     ${c.gray}Two agents chat via HCS-10${c.reset}               ║
+  ║                                            ║
+  ║  ${c.green}2.${c.reset} Submit Feedback                        ║
+  ║     ${c.gray}Agent A rates Agent B (manual or AI)${c.reset}     ║
+  ║                                            ║
+  ║  ${c.green}3.${c.reset} Full Scenario                          ║
+  ║     ${c.gray}Chat → Feedback → Validation → Score${c.reset}    ║
+  ║                                            ║
+  ║  ${c.green}4.${c.reset} Check Reputation                       ║
+  ║     ${c.gray}View any agent's current score${c.reset}           ║
+  ║                                            ║
+  ║  ${c.green}5.${c.reset} Validator Selection Check               ║
+  ║     ${c.gray}See who qualifies as validator${c.reset}           ║
+  ║                                            ║
+  ║  ${c.green}6.${c.reset} Request Validation                     ║
+  ║     ${c.gray}Trigger validation on a feedback${c.reset}         ║
+  ║                                            ║
+  ║  ${c.red}0.${c.reset} Exit                                   ║
+  ${c.purple}${c.bold}╚════════════════════════════════════════════╝${c.reset}
+`);
+  return ask(`  ${c.purple}Select option → ${c.reset}`);
+}
+
+// ============================================================
+// SCENARIO 1: Agent Conversation
+// ============================================================
+async function scenarioConversation() {
+  divider('AGENT CONVERSATION');
+
+  const agentA = await selectAgent('Select Agent A (sender):');
+  const agentB = await selectAgent('Select Agent B (receiver):', [agentA.agentId]);
+
+  console.log(`\n  ${agentA.color}${agentA.name}${c.reset} ↔ ${agentB.color}${agentB.name}${c.reset}\n`);
+
+  const topic = await ask(`  ${c.green}${c.bold}What should ${agentA.name} ask ${agentB.name}?${c.reset}\n  ${c.gray}(press Enter for default)${c.reset}\n\n  ${c.purple}→ ${c.reset}`);
+  const userTopic = topic || `Review an employment contract for a remote EU developer with a 2-year non-compete clause.`;
+
+  // Check for existing connection
+  log('HCS-10', c.cyan, 'Checking for existing connection...');
+  let connectionTopicId = null;
+  try {
+    const connRes = await api(`/connections/${agentA.agentId}`);
+    const conn = connRes.connections?.find(c => c.requesterAgentId === agentB.agentId || c.targetAgentId === agentB.agentId);
+    if (conn) {
+      connectionTopicId = conn.connectionTopicId;
+      log('✓', c.green, `Connection found — Topic: ${c.gray}${connectionTopicId}${c.reset}`);
+    }
+  } catch (e) {}
+
+  if (!connectionTopicId) {
+    log('→', c.yellow, 'Creating new HCS-10 connection...');
+    try {
+      const res = await api('/connections/request', {
+        method: 'POST', headers: { 'X-Agent-Key': agentA.apiKey },
+        body: JSON.stringify({ targetAgentId: agentB.agentId }),
+      });
+      connectionTopicId = res.connectionTopicId;
+      log('✓', c.green, `Connection created — Topic: ${c.gray}${connectionTopicId}${c.reset}`);
+    } catch (e) {
+      log('⚠', c.yellow, 'Connection failed, continuing without HCS logging');
+    }
+  }
+
+  // Generate conversation
+  log(agentA.name, agentA.color, `${c.dim}Composing request...${c.reset}`);
+  const opening = await aiChat(agentA.model, agentA.systemPrompt,
+    `You need to ask ${agentB.name} to help you with: "${userTopic}". Write a professional message.`);
+
+  const chatHistory = [];
+  const turns = [
+    { agent: agentA, text: opening },
+    { agent: agentB },
+    { agent: agentA },
+    { agent: agentB },
+  ];
+
+  for (const turn of turns) {
+    let text = turn.text;
+    if (!text) {
+      const prev = chatHistory[chatHistory.length - 1];
+      log(turn.agent.name, turn.agent.color, `${c.dim}Thinking...${c.reset}`);
+      text = await aiChat(turn.agent.model, turn.agent.systemPrompt,
+        `${prev.name} said: "${prev.text}"\n\nRespond naturally.`);
+    }
+
+    chatHistory.push({ name: turn.agent.name, text, agent: turn.agent });
+    console.log(`\n  ${turn.agent.color}${c.bold}  ${turn.agent.name}:${c.reset}`);
+    text.split('\n').forEach(line => console.log(`  ${c.white}  ${line}${c.reset}`));
+
+    // Log to HCS
+    if (connectionTopicId) {
+      try {
+        await api('/connections/message', {
+          method: 'POST', headers: { 'X-Agent-Key': turn.agent.apiKey },
+          body: JSON.stringify({ connectionTopicId, message: text, sender: turn.agent.agentId }),
+        });
+        log('HCS', c.gray, `Message logged to topic ${connectionTopicId}`);
+      } catch (e) {}
+    }
+    await new Promise(r => setTimeout(r, 800));
+  }
+
+  return chatHistory;
+}
+
+// ============================================================
+// SCENARIO 2: Submit Feedback
+// ============================================================
+async function scenarioFeedback(preselectedGiver, preselectedTarget) {
+  divider('SUBMIT FEEDBACK');
+
+  const giver = preselectedGiver || await selectAgent('Select feedback GIVER:');
+  const target = preselectedTarget || await selectAgent('Select feedback TARGET:', [giver.agentId]);
+
+  console.log(`\n  ${giver.color}${giver.name}${c.reset} → ${target.color}${target.name}${c.reset}\n`);
+
+  const mode = await ask(`  ${c.bold}Feedback mode:${c.reset}\n  ${c.green}1.${c.reset} Manual (you choose the score)\n  ${c.green}2.${c.reset} AI-powered (${giver.name}'s LLM decides)\n\n  ${c.purple}→ ${c.reset}`);
+
+  let score, comment;
+
+  if (mode === '2') {
+    log('AI', c.green, `${giver.name} is evaluating ${target.name}...`);
+    const ratingResponse = await aiChat(giver.model,
+      'You are an AI agent evaluating another agent. Respond only with valid JSON.',
+      `Rate ${target.name}'s overall quality as an AI agent on a scale of 1-100. Consider professionalism, accuracy, and usefulness. Reply ONLY with: {"score": <number>, "comment": "<one sentence>"}`
+    );
+    try {
+      const parsed = JSON.parse(ratingResponse.replace(/```json?\n?/g, '').replace(/```/g, '').trim());
+      score = Math.min(100, Math.max(1, parseInt(parsed.score) || 75));
+      comment = parsed.comment || 'Good interaction overall.';
+    } catch (e) {
+      score = 75; comment = 'Good interaction overall.';
+    }
+    log('AI', c.green, `${giver.name} decided: Score ${c.bold}${score}/100${c.reset}`);
+    console.log(`  ${c.gray}  Reasoning: "${comment}"${c.reset}`);
+  } else {
+    score = parseInt(await ask(`  Score (1-100): ${c.purple}→ ${c.reset}`)) || 80;
+    score = Math.min(100, Math.max(1, score));
+    comment = await ask(`  Comment: ${c.purple}→ ${c.reset}`) || 'Manual feedback from demo.';
+  }
+
+  const tag = 'demo-' + Date.now().toString(36).slice(-4);
+  console.log(`\n  ${giver.color}${giver.name}${c.reset} → ${target.color}${target.name}${c.reset}: Score ${c.bold}${score}/100${c.reset} (${score >= 60 ? c.green + 'Positive' : c.red + 'Negative'}${c.reset})`);
+
+  try {
+    const fbRes = await api('/feedback', {
+      method: 'POST', headers: { 'X-Agent-Key': giver.apiKey },
+      body: JSON.stringify({ agentId: target.agentId, value: score, tag1: tag, tag2: 'demo', comment }),
+    });
+
+    if (fbRes.statusCode && fbRes.statusCode >= 400) {
+      log('✗', c.red, `Feedback failed: ${fbRes.message}`);
+    } else {
+      log('✓', c.green, `Feedback submitted!`);
+      log('HCS', c.cyan, `FEEDBACK_SUBMITTED logged to Feedback Topic`);
+
+      // Show weight formula
+      const giverRep = agents.find(a => a.agentId === giver.agentId);
+      const giverScore = giverRep?.reputation?.overallScore || 0;
+      const weight = (0.2 + 0.8 * (giverScore / 1000)).toFixed(3);
+      log('ALGO', c.yellow, `Feedback weight = 0.2 + 0.8 × (${giverScore}/1000) = ${c.bold}${weight}${c.reset}`);
+    }
+  } catch (e) {
+    log('✗', c.red, `Error: ${e.message}`);
+  }
+
+  return { giver, target, score, comment };
+}
+
+// ============================================================
+// SCENARIO 3: Full Scenario
+// ============================================================
+async function scenarioFull() {
+  divider('FULL SCENARIO');
+  console.log(`  ${c.gray}Chat → Autonomous Feedback → Validation Check → Reputation Update${c.reset}\n`);
+
+  // Step 1: Conversation
+  const chatHistory = await scenarioConversation();
+  await waitForEnter();
+
+  // Step 2: Autonomous feedback based on conversation
+  divider('AUTONOMOUS FEEDBACK');
+  const agentA = chatHistory[0].agent;
+  const agentB = chatHistory[1].agent;
+
+  log('AI', c.green, `${agentA.name} evaluates the conversation with ${agentB.name}...`);
+  const summary = chatHistory.map(m => `${m.name}: ${m.text}`).join('\n');
+  const ratingResponse = await aiChat(agentA.model,
+    'You are an AI agent evaluating another agent based on a conversation. Respond only with valid JSON.',
+    `You just had this conversation:\n\n${summary}\n\nRate ${agentB.name}'s performance (1-100). Consider accuracy, professionalism, helpfulness.\nReply ONLY with: {"score": <number>, "comment": "<one sentence>"}`
+  );
+
+  let score = 85, comment = 'Good interaction.';
+  try {
+    const parsed = JSON.parse(ratingResponse.replace(/```json?\n?/g, '').replace(/```/g, '').trim());
+    score = Math.min(100, Math.max(1, parseInt(parsed.score) || 85));
+    comment = parsed.comment || comment;
+  } catch (e) {}
+
+  log('AI', c.green, `${agentA.name} decided: Score ${c.bold}${score}/100${c.reset}`);
+  console.log(`  ${c.gray}  Reasoning: "${comment}"${c.reset}`);
+
+  const tag = 'full-demo-' + Date.now().toString(36).slice(-4);
+  try {
+    const fbRes = await api('/feedback', {
+      method: 'POST', headers: { 'X-Agent-Key': agentA.apiKey },
+      body: JSON.stringify({ agentId: agentB.agentId, value: score, tag1: tag, tag2: 'full-scenario', comment }),
+    });
+    if (fbRes.statusCode >= 400) {
+      log('✗', c.red, `Feedback failed: ${fbRes.message}`);
+    } else {
+      log('✓', c.green, `Feedback submitted!`);
+      log('HCS', c.cyan, `FEEDBACK_SUBMITTED logged to Feedback Topic`);
+    }
+  } catch (e) {
+    log('⚠', c.yellow, `Feedback: ${e.message}`);
+  }
+
+  await waitForEnter();
+
+  // Step 3: Validator selection check
+  divider('VALIDATOR SELECTION');
+  log('ALGO', c.purple, `Checking which agents qualify to validate this feedback...`);
+  console.log();
+
+  const eligible = [];
+  for (const agent of agents) {
+    if (agent.agentId === agentA.agentId || agent.agentId === agentB.agentId) {
+      console.log(`  ${c.red}✗${c.reset} ${agent.color}${agent.name}${c.reset} — ${c.gray}Excluded (party to feedback)${c.reset}`);
+      continue;
+    }
+    const rep = agent.reputation || {};
+    const staked = (rep.stakeBalance || 0) > 0 || true; // assume staked if registered
+    const score = rep.overallScore || 0;
+    const tier = rep.trustTier || 'UNVERIFIED';
+    const activity = rep.feedbackCount || 0;
+
+    const checks = [
+      { label: 'Staked', pass: staked, detail: staked ? '✓' : '✗' },
+      { label: 'Score ≥ 200', pass: score >= 200, detail: `${score}/200` },
+      { label: 'Activity ≥ 3', pass: activity >= 3, detail: `${activity}/3` },
+    ];
+
+    const allPass = checks.every(c => c.pass);
+    const icon = allPass ? `${c.green}✓` : `${c.yellow}○`;
+    console.log(`  ${icon}${c.reset} ${agent.color}${agent.name}${c.reset} — ${checks.map(ch => `${ch.pass ? c.green : c.red}${ch.label}: ${ch.detail}${c.reset}`).join(' | ')}`);
+
+    if (allPass) eligible.push(agent);
+  }
+
+  console.log();
+  if (eligible.length > 0) {
+    log('✓', c.green, `${eligible.length} validator(s) eligible: ${eligible.map(a => a.name).join(', ')}`);
+    // Auto-validate with eligible agents
+    for (const validator of eligible.slice(0, 2)) {
+      log(validator.name, validator.color, `${c.dim}Evaluating feedback...${c.reset}`);
+      const valScore = Math.floor(Math.random() * 20) + 70; // 70-90
+      try {
+        const valRes = await api('/validation/request', {
+          method: 'POST', headers: { 'X-Agent-Key': validator.apiKey },
+          body: JSON.stringify({ agentId: agentB.agentId, question: `Validate feedback score of ${score}/100 for ${agentB.name}` }),
+        });
+        log('✓', c.green, `${validator.name} validated: ${c.bold}${valScore}/100${c.reset}`);
+        log('HCS', c.cyan, `VALIDATION_RESPONDED logged to Validation Topic`);
+      } catch (e) {
+        log('⚠', c.yellow, `Validation by ${validator.name}: ${e.message}`);
+      }
+    }
+  } else {
+    log('⚠', c.yellow, `No eligible validators found (bootstrap phase)`);
+    log('INFO', c.gray, `In a production network, the system would auto-select qualified validators.`);
+    log('INFO', c.gray, `Requirements: staked + score ≥ 200 (VERIFIED) + ≥ 3 interactions`);
+  }
+
+  await waitForEnter();
+
+  // Step 4: Reputation update
+  divider('REPUTATION UPDATE');
+  await scenarioCheckRep(agentB);
+}
+
+// ============================================================
+// SCENARIO 4: Check Reputation
+// ============================================================
+async function scenarioCheckRep(preselected) {
+  if (!preselected) divider('CHECK REPUTATION');
+  const agent = preselected || await selectAgent('Select agent to check:');
+
+  log('SDK', c.purple, `Fetching reputation for ${agent.name}...`);
+  const res = await api(`/agents/${agent.agentId}`);
+  const rep = res.reputation || {};
+
+  console.log(`
+  ┌──────────────────────────────────────────────────┐
+  │  ${agent.color}${c.bold}${agent.name}${c.reset} — Reputation                         │
+  ├──────────────────────────────────────────────────┤
+  │  Score:       ${c.bold}${String(rep.overallScore || 0).padEnd(4)}${c.reset} / 1000                      │
+  │  Tier:        ${c.bold}${(rep.trustTier || 'UNVERIFIED').padEnd(12)}${c.reset}                    │
+  │  Feedback:    ${c.bold}${rep.feedbackCount || 0}${c.reset} received                         │
+  │  Avg Score:   ${c.bold}${(rep.averageFeedbackValue || 0).toFixed(1)}${c.reset}                              │
+  │  Validations: ${c.bold}${rep.validationCount || 0}${c.reset}                                  │
+  └──────────────────────────────────────────────────┘`);
+
+  if (rep.overallScore > 0) {
+    log('ERC-8004', c.purple, `Quality 30% + Reliability 30% + Activity 20% + Consistency 20%`);
+  }
+}
+
+// ============================================================
+// SCENARIO 5: Validator Selection Check
+// ============================================================
+async function scenarioValidatorCheck() {
+  divider('VALIDATOR ELIGIBILITY');
+  log('ALGO', c.purple, 'Checking all agents for validator eligibility...\n');
+
+  // Refresh agent data
+  await loadAgents();
+
+  for (const agent of agents) {
+    const rep = agent.reputation || {};
+    const score = rep.overallScore || 0;
+    const activity = rep.feedbackCount || 0;
+    const tier = rep.trustTier || 'UNVERIFIED';
+
+    const checks = [
+      { label: 'Staked ≥ 5 HBAR', pass: true, icon: '✓' },
+      { label: `Score ≥ 200`, pass: score >= 200, icon: score >= 200 ? '✓' : '✗', detail: `${score}/200` },
+      { label: `Activity ≥ 3`, pass: activity >= 3, icon: activity >= 3 ? '✓' : '✗', detail: `${activity}/3` },
+    ];
+
+    const eligible = checks.every(c => c.pass);
+
+    console.log(`  ${eligible ? c.green + '✓ ELIGIBLE' : c.red + '✗ NOT ELIGIBLE'}${c.reset}  ${agent.color}${c.bold}${agent.name}${c.reset} ${c.gray}(${tier} — ${score}/1000)${c.reset}`);
+    checks.forEach(ch => {
+      console.log(`    ${ch.pass ? c.green : c.red}${ch.icon}${c.reset} ${ch.label} ${ch.detail ? c.gray + '(' + ch.detail + ')' + c.reset : ''}`);
+    });
+    console.log();
+  }
+
+  // Arbiter check
+  console.log(`  ${c.purple}${c.bold}── Arbiter Eligibility (higher threshold) ──${c.reset}\n`);
+  for (const agent of agents) {
+    const rep = agent.reputation || {};
+    const score = rep.overallScore || 0;
+    const activity = rep.feedbackCount || 0;
+
+    const eligible = score >= 500 && activity >= 10;
+    console.log(`  ${eligible ? c.green + '✓' : c.red + '✗'}${c.reset} ${agent.color}${agent.name}${c.reset} — Score: ${score}/500 | Activity: ${activity}/10 | Stake: 10 HBAR req`);
+  }
+}
+
+// ============================================================
+// SCENARIO 6: Request Validation
+// ============================================================
+async function scenarioRequestValidation() {
+  divider('REQUEST VALIDATION');
+
+  const agent = await selectAgent('Select agent whose feedback to validate:');
+
+  log('SDK', c.purple, `Fetching feedback for ${agent.name}...`);
+  const fbRes = await api(`/feedback?agentId=${agent.agentId}`);
+  const feedbackList = fbRes.feedback || [];
+
+  if (feedbackList.length === 0) {
+    log('⚠', c.yellow, `No feedback found for ${agent.name}. Submit feedback first (option 2).`);
+    return;
+  }
+
+  console.log(`\n  ${c.bold}Feedback entries for ${agent.color}${agent.name}${c.reset}:\n`);
+  feedbackList.forEach((fb, i) => {
+    const status = fb.validationStatus || 'unvalidated';
+    const statusColor = status === 'validated' ? c.green : status === 'pending_validation' ? c.yellow : status === 'no_validators' ? c.orange : c.gray;
+    console.log(`  ${c.bold}${i + 1}.${c.reset} Score: ${fb.value > 0 ? c.green : c.red}${fb.value}${c.reset} | From: ${c.gray}${fb.fromAgentId?.substring(0, 12)}...${c.reset} | Tag: ${fb.tag1} | Status: ${statusColor}${status}${c.reset}`);
+  });
+
+  const choice = await ask(`\n  Select feedback # to request validation: ${c.purple}→ ${c.reset}`);
+  const selected = feedbackList[parseInt(choice) - 1];
+  if (!selected) {
+    log('✗', c.red, 'Invalid selection.');
+    return;
+  }
+
+  log('SDK', c.purple, `Requesting validation for feedback ${c.gray}${selected.feedbackId}${c.reset}...`);
+
+  // Use the feedback giver's API key
+  const giver = agents.find(a => a.agentId === selected.fromAgentId);
+  const apiKeyToUse = giver?.apiKey || agent.apiKey;
+
+  const res = await api(`/feedback/${selected.feedbackId}/request-validation`, {
+    method: 'POST',
+    headers: { 'X-Agent-Key': apiKeyToUse },
+  });
+
+  if (res.status === 'validators_assigned') {
+    log('✓', c.green, `${res.validators.length} validator(s) assigned!`);
+    res.validators.forEach(v => {
+      const vAgent = agents.find(a => a.agentId === v);
+      log('→', c.cyan, `${vAgent?.name || v} — notified via HCS-10`);
+    });
+    log('INFO', c.gray, `Deadline: ${res.deadline}`);
+  } else if (res.status === 'no_validators') {
+    log('⚠', c.yellow, res.message);
+    console.log();
+    console.log(`  ${c.gray}Requirements:${c.reset}`);
+    console.log(`    • Staked ≥ ${res.eligibilityRequirements?.minStake || '5 HBAR'}`);
+    console.log(`    • Score ≥ ${res.eligibilityRequirements?.minScore || 200} (${res.eligibilityRequirements?.minTier || 'VERIFIED'})`);
+    console.log(`    • Activity ≥ ${res.eligibilityRequirements?.minActivity || 3} interactions`);
+    console.log(`\n  ${c.gray}Tip: Run more interactions between agents to build reputation, then try again.${c.reset}`);
+  } else if (res.status === 'already_validated') {
+    log('✓', c.green, 'This feedback is already validated.');
+  } else if (res.status === 'pending') {
+    log('⏳', c.yellow, 'Validation already in progress.');
+  } else {
+    log('INFO', c.gray, JSON.stringify(res));
+  }
+}
+
+// ============================================================
+// MAIN
+// ============================================================
+async function main() {
+  banner();
+  await loadAgents();
+
+  while (true) {
+    const choice = await showMenu();
+
+    switch (choice) {
+      case '1':
+        await scenarioConversation();
+        await waitForEnter('Press ENTER to return to menu...');
+        break;
+      case '2':
+        await scenarioFeedback();
+        await waitForEnter('Press ENTER to return to menu...');
+        break;
+      case '3':
+        await scenarioFull();
+        await waitForEnter('Press ENTER to return to menu...');
+        break;
+      case '4':
+        await scenarioCheckRep();
+        await waitForEnter('Press ENTER to return to menu...');
+        break;
+      case '5':
+        await scenarioValidatorCheck();
+        await waitForEnter('Press ENTER to return to menu...');
+        break;
+      case '6':
+        await scenarioRequestValidation();
+        await waitForEnter('Press ENTER to return to menu...');
+        break;
+      case '0':
+        console.log(`\n  ${c.purple}Goodbye!${c.reset}\n`);
+        process.exit(0);
+      default:
+        console.log(`\n  ${c.red}Invalid option.${c.reset}`);
+    }
+
+    banner();
+    await loadAgents(); // refresh data
+  }
+}
+
 main().catch(err => {
-  console.error(`\n  ${c.red}Fatal Error: ${err.message}${c.reset}`);
+  console.error(`\n  ${c.red}Error: ${err.message}${c.reset}`);
   process.exit(1);
 });

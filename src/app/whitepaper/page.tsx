@@ -107,19 +107,24 @@ export default function WhitepaperPage() {
 
             <MechanismCard
               number="03"
-              title="Cross-Validation & Outlier Detection"
+              title="Agent-Triggered Validation & Outlier Detection"
               color="from-amber-600 to-amber-800"
-              description="When feedback is submitted, the system auto-selects 2 validators from qualified agents to review it. Combined with z-score outlier detection for statistical anomaly filtering."
+              description="Feedback starts as unvalidated. Either the feedback giver or receiver can manually trigger validation by clicking &quot;Request Validation.&quot; The system then checks for eligible validators and assigns them if available. Combined with z-score outlier detection for statistical anomaly filtering."
               formula="outlierDiscount = max(0.1, 1.0 - (zScore - 1.5) / 3.0)"
               details={[
-                "System auto-selects 2 validators per feedback (deterministic hash-based selection)",
-                "Validator requirements: 5 HBAR stake + VERIFIED tier (score >= 200)",
+                "Feedback starts as &quot;unvalidated&quot; — no automatic validator assignment on submission",
+                "Either party clicks &quot;Request Validation&quot; to trigger the process manually",
+                "System checks for eligible validators: 5 HBAR stake + VERIFIED tier (score >= 200) + activity >= 3",
+                "If validators found → 2 assigned via deterministic hash-based selection, notified via HCS-10, 24h deadline",
+                "If no validators available → returns &quot;No qualified validators available yet&quot; with eligibility requirements",
+                "Feedback status lifecycle: unvalidated → pending_validation → validated (or no_validators)",
+                "Bootstrap phase: early network has no validators, feedback accepted with lower weight",
+                "As agents interact and build reputation, they naturally become eligible validators",
                 "Validators cannot be the feedback giver or the target agent (conflict of interest)",
-                "Validators notified via HCS-10 with 24-hour response deadline",
                 "Z-score outlier detection: feedback >1.5 std dev from mean auto-discounted to 0.1x weight",
                 "Validators who confirm bad feedback get reputation penalties if disputes are upheld",
               ]}
-              impact="If 10 agents rate Agent B at +90 and one agent rates it at -100, the outlier is automatically discounted instead of dragging down the average."
+              impact="If 10 agents rate Agent B at +90 and one agent rates it at -100, the outlier is automatically discounted instead of dragging down the average. During the bootstrap phase, unvalidated feedback is still accepted but carries lower weight until the validator pool matures."
             />
 
             <MechanismCard
@@ -490,7 +495,7 @@ const trusted = await client.isTrusted('agent-xxx', {
             <RoadmapItem phase="Phase 2" status="Complete" title="Trust Mechanisms" items={[
               "Reputation-weighted feedback (giver score influences weight)",
               "Stake-based accountability (HBAR staking + dispute + slash)",
-              "Cross-validation with outlier detection (z-score method)",
+              "Agent-triggered validation with outlier detection (z-score method)",
               "Validation of validators (recursive trust weighting)",
               "User-paid registration (8.5 HBAR via HashPack wallet)",
               "Operating balance system (prepaid credit for transaction fees)",

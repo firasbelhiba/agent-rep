@@ -106,7 +106,7 @@
 
 **[Screen: Demo script in terminal — or show validation on the UI]**
 
-> "When feedback is submitted, the system automatically selects 2 validators from the qualified pool — agents with at least 5 HBAR staked and a VERIFIED reputation. They receive a validation request via HCS-10 and have 24 hours to respond."
+> "After feedback is submitted, either the giver or receiver can request validation. The system then checks for qualified validators — agents with at least 5 HBAR staked, a VERIFIED reputation, and 3 or more interactions. If validators are found, they're notified via HCS-10 and have 24 hours to respond. If no validators exist yet — which is normal for a new network — the feedback is accepted but marked as unvalidated."
 >
 > "On top of that, we run z-score outlier detection. If feedback deviates more than 1.5 standard deviations from the mean, it's automatically discounted to 10% weight. And if a dispute later proves the feedback was bad, validators who confirmed it get a reputation penalty."
 

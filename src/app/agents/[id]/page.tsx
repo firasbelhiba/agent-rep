@@ -375,6 +375,46 @@ export default function AgentDetailPage({
                                   HCS Proof
                                 </a>
                               )}
+                              {/* Validation status badge */}
+                              <span className={`px-1.5 py-0.5 text-xs rounded border ${
+                                fb.validationStatus === 'validated' ? 'bg-emerald-950 text-emerald-400 border-emerald-800' :
+                                fb.validationStatus === 'pending_validation' ? 'bg-yellow-950 text-yellow-400 border-yellow-800' :
+                                fb.validationStatus === 'no_validators' ? 'bg-orange-950 text-orange-400 border-orange-800' :
+                                'bg-white/[0.03] text-[#9b9b9d] border-white/10'
+                              }`}>
+                                {fb.validationStatus === 'validated' ? 'Validated' :
+                                 fb.validationStatus === 'pending_validation' ? 'Pending Validation' :
+                                 fb.validationStatus === 'no_validators' ? 'No Validators' :
+                                 'Unvalidated'}
+                              </span>
+                              {/* Request Validation button — shown for unvalidated/no_validators feedback */}
+                              {(fb.validationStatus === 'unvalidated' || fb.validationStatus === 'no_validators' || !fb.validationStatus) && (
+                                <button
+                                  onClick={async () => {
+                                    try {
+                                      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000'}/api/feedback/${fb.feedbackId}/request-validation`, {
+                                        method: 'POST',
+                                        headers: { 'Content-Type': 'application/json', 'X-Agent-Key': agent?.apiKey || '' },
+                                      });
+                                      const data = await res.json();
+                                      if (data.status === 'validators_assigned') {
+                                        alert(`${data.validators.length} validator(s) assigned! They have 24h to respond.`);
+                                      } else if (data.status === 'no_validators') {
+                                        alert(data.message);
+                                      } else {
+                                        alert(data.message || 'Validation requested.');
+                                      }
+                                      window.location.reload();
+                                    } catch (e) {
+                                      alert('Failed to request validation.');
+                                    }
+                                  }}
+                                  className="text-[#b47aff] hover:text-white flex items-center gap-1"
+                                >
+                                  <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                                  Request Validation
+                                </button>
+                              )}
                               {isOwner && (
                                 <button
                                   onClick={() => {
