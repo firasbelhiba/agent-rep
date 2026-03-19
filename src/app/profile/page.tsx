@@ -18,6 +18,9 @@ interface AgentBalance {
   operatingBalanceTinybar: number;
   apiKey: string | null;
   hashScanUrl: string | null;
+  reputationScore?: number;
+  feedbackCount?: number;
+  arbiterEligible?: boolean;
 }
 
 export default function ProfilePage() {
