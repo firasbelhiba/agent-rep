@@ -308,7 +308,7 @@ export class FeedbackController {
           saved.hcsSequenceNumber = hcsSequenceNumber;
           await this.feedbackService.create(saved);
         } catch (e) {
-          this.logger.warn('Failed to log feedback to HCS', e);
+          this.logger.error(`CRITICAL: Failed to log feedback to HCS — feedback saved to DB but NOT on-chain: ${e.message}`);
         }
       }
     }

@@ -120,9 +120,7 @@ export class StakingService {
 
     // Update DB cache
     const stake = await this.getStake(agentId);
-    const slashAmount = this.stakingContract.isConfigured()
-      ? Math.floor(Number(stake.balance) * SLASH_PERCENT / 100)
-      : Math.min(Number(stake.balance), SLASH_AMOUNT);
+    const slashAmount = Math.floor(Number(stake.balance) * SLASH_PERCENT / 100);
 
     stake.balance = Number(stake.balance) - slashAmount;
     stake.totalSlashed = Number(stake.totalSlashed) + slashAmount;
@@ -392,7 +390,28 @@ export class StakingService {
       dispute.setSelectedArbiters(selectedArbiterIds);
     }
 
-    return this.disputeRepo.save(dispute);
+    const savedDispute = await this.disputeRepo.save(dispute);
+
+    // Deposit bond on-chain
+    if (this.stakingContract.isConfigured() && bondAmount > 0) {
+      try {
+        const bondTxId = await this.stakingContract.depositDisputeBond(
+          savedDispute.id,
+          disputerId,
+          bondAmount,
+        );
+        this.logger.log(`Dispute bond deposited on-chain: tx ${bondTxId}`);
+        savedDispute.contractTxId = bondTxId;
+        await this.disputeRepo.save(savedDispute);
+      } catch (e) {
+        this.logger.error(`Failed to deposit dispute bond on-chain: ${e.message}`);
+        // Clean up the dispute since bond wasn't locked
+        await this.disputeRepo.remove(savedDispute);
+        throw new Error(`Dispute bond deposit failed on-chain: ${e.message}`);
+      }
+    }
+
+    return savedDispute;
   }
 
   async submitArbiterVote(
@@ -439,9 +458,17 @@ export class StakingService {
       const result = await this.slash(dispute.accusedId, `Dispute #${disputeId}: upheld by arbiter panel`);
       slashedStake = result.stake;
       txId = result.txId;
-      dispute.slashAmount = this.stakingContract.isConfigured()
-        ? Math.floor(Number(slashedStake.balance) * SLASH_PERCENT / 100)
-        : SLASH_AMOUNT;
+      dispute.slashAmount = Math.floor(Number(slashedStake.balance) * SLASH_PERCENT / 100);
+
+      // Return dispute bond to disputer on-chain
+      if (this.stakingContract.isConfigured() && dispute.bondAmount > 0) {
+        try {
+          await this.stakingContract.returnDisputeBond(disputeId, dispute.disputerId);
+          this.logger.log(`Dispute bond returned to ${dispute.disputerId}`);
+        } catch (e) {
+          this.logger.error(`Failed to return dispute bond: ${e.message}`);
+        }
+      }
 
       // Penalize validators who confirmed the bad feedback
       await this.penalizeValidatorsForBadFeedback(dispute.feedbackId);
@@ -454,6 +481,16 @@ export class StakingService {
       dispute.resolvedBy = 'arbiter-panel';
       dispute.resolvedAt = Date.now();
       dispute.resolutionNotes = `Dismissed by majority vote (${dismissedCount}/${voteValues.length})`;
+
+      // Forfeit dispute bond to accused on-chain
+      if (this.stakingContract.isConfigured() && dispute.bondAmount > 0) {
+        try {
+          await this.stakingContract.forfeitDisputeBond(disputeId, dispute.accusedId);
+          this.logger.log(`Dispute bond forfeited to ${dispute.accusedId}`);
+        } catch (e) {
+          this.logger.error(`Failed to forfeit dispute bond: ${e.message}`);
+        }
+      }
 
       finalized = true;
       await this.updateArbiterStats(selectedArbiters, votes, 'dismissed');
@@ -561,9 +598,25 @@ export class StakingService {
       const result = await this.slash(dispute.accusedId, `Dispute #${disputeId}: ${notes || 'upheld'}`);
       slashedStake = result.stake;
       txId = result.txId;
-      dispute.slashAmount = this.stakingContract.isConfigured()
-        ? Math.floor(Number(slashedStake.balance) * SLASH_PERCENT / 100)
-        : SLASH_AMOUNT;
+      dispute.slashAmount = Math.floor(Number(slashedStake.balance) * SLASH_PERCENT / 100);
+
+      // Return dispute bond to disputer
+      if (this.stakingContract.isConfigured() && dispute.bondAmount > 0) {
+        try {
+          await this.stakingContract.returnDisputeBond(disputeId, dispute.disputerId);
+        } catch (e) {
+          this.logger.error(`Failed to return dispute bond: ${e.message}`);
+        }
+      }
+    } else {
+      // Dismissed — forfeit bond to accused
+      if (this.stakingContract.isConfigured() && dispute.bondAmount > 0) {
+        try {
+          await this.stakingContract.forfeitDisputeBond(disputeId, dispute.accusedId);
+        } catch (e) {
+          this.logger.error(`Failed to forfeit dispute bond: ${e.message}`);
+        }
+      }
     }
 
     await this.disputeRepo.save(dispute);

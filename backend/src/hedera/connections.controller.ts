@@ -83,16 +83,16 @@ export class ConnectionsController {
       return { connection: existing, success: true };
     }
 
-    // Create a real HCS topic for the connection
-    let connectionTopicId: string;
-    if (this.hcs10Service.isConfigured()) {
-      connectionTopicId = await this.hcsService.createTopic(
-        `AgentRep Connection: ${fromAgentId} <-> ${toAgentId}`,
+    // Create a real HCS topic for the connection — no fake fallbacks
+    if (!this.hcs10Service.isConfigured()) {
+      throw new HttpException(
+        'Hedera not configured — cannot create real HCS connection topic. Set HEDERA_ACCOUNT_ID and HEDERA_PRIVATE_KEY.',
+        HttpStatus.SERVICE_UNAVAILABLE,
       );
-    } else {
-      // Fallback only if Hedera is not configured (local dev without keys)
-      connectionTopicId = `local-${Date.now()}`;
     }
+    const connectionTopicId = await this.hcsService.createTopic(
+      `AgentRep Connection: ${fromAgentId} <-> ${toAgentId}`,
+    );
 
     const connection = this.connectionRepo.create({
       fromAgentId,

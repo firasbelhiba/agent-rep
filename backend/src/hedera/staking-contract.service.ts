@@ -5,6 +5,7 @@ import {
   ContractFunctionParameters,
   ContractId,
   Hbar,
+  Status,
 } from '@hashgraph/sdk';
 import * as crypto from 'crypto';
 import { HederaConfigService } from './hedera-config.service';
@@ -33,8 +34,8 @@ export class StakingContractService {
   }
 
   /**
-   * Convert agent string ID to bytes32 (keccak256 hash).
-   * This matches the contract's agentId parameter.
+   * Convert agent string ID to bytes32 (SHA-256 hash).
+   * All existing on-chain stakes were created with SHA-256, so this MUST stay consistent.
    */
   agentIdToBytes32(agentId: string): Buffer {
     return crypto.createHash('sha256').update(agentId).digest();
@@ -68,6 +69,10 @@ export class StakingContractService {
     const receipt = await response.getReceipt(client);
     const txId = response.transactionId.toString();
 
+    if (receipt.status !== Status.Success) {
+      throw new Error(`Stake transaction failed with status: ${receipt.status}`);
+    }
+
     this.logger.log(`Stake tx: ${txId}, status: ${receipt.status}`);
     return txId;
   }
@@ -95,6 +100,10 @@ export class StakingContractService {
     const receipt = await response.getReceipt(client);
     const txId = response.transactionId.toString();
 
+    if (receipt.status !== Status.Success) {
+      throw new Error(`Arbiter stake transaction failed with status: ${receipt.status}`);
+    }
+
     this.logger.log(`Arbiter stake tx: ${txId}, status: ${receipt.status}`);
     return txId;
   }
@@ -116,7 +125,11 @@ export class StakingContractService {
       );
 
     const response = await tx.execute(client);
-    await response.getReceipt(client);
+    const unstakeReceipt = await response.getReceipt(client);
+
+    if (unstakeReceipt.status !== Status.Success) {
+      throw new Error(`Unstake transaction failed with status: ${unstakeReceipt.status}`);
+    }
 
     this.logger.log(`Unstake tx: ${response.transactionId}`);
     return response.transactionId.toString();
@@ -142,7 +155,11 @@ export class StakingContractService {
       );
 
     const response = await tx.execute(client);
-    await response.getReceipt(client);
+    const slashReceipt = await response.getReceipt(client);
+
+    if (slashReceipt.status !== Status.Success) {
+      throw new Error(`Slash transaction failed with status: ${slashReceipt.status}`);
+    }
 
     this.logger.log(`Slash tx: ${response.transactionId}, ${percent}% — ${reason}`);
     return response.transactionId.toString();
@@ -192,6 +209,97 @@ export class StakingContractService {
 
     const result = await query.execute(client);
     return result.getUint256(0).toNumber();
+  }
+
+  /**
+   * Deposit a dispute bond on-chain.
+   */
+  async depositDisputeBond(disputeId: number, disputerId: string, amountTinybar: number): Promise<string> {
+    const client = this.hederaConfig.getClient();
+    const contractId = this.getContractId();
+    const disputerBytes = this.agentIdToBytes32(disputerId);
+
+    const tx = new ContractExecuteTransaction()
+      .setContractId(contractId)
+      .setGas(200000)
+      .setPayableAmount(Hbar.fromTinybars(amountTinybar))
+      .setFunction(
+        'depositDisputeBond',
+        new ContractFunctionParameters()
+          .addUint256(disputeId)
+          .addBytes32(disputerBytes),
+      );
+
+    const response = await tx.execute(client);
+    const receipt = await response.getReceipt(client);
+    const txId = response.transactionId.toString();
+
+    if (receipt.status !== Status.Success) {
+      throw new Error(`depositDisputeBond failed with status: ${receipt.status}`);
+    }
+
+    this.logger.log(`Dispute bond deposited: dispute #${disputeId}, ${amountTinybar} tinybars, tx: ${txId}`);
+    return txId;
+  }
+
+  /**
+   * Return dispute bond to the disputer (dispute upheld).
+   */
+  async returnDisputeBond(disputeId: number, disputerId: string): Promise<string> {
+    const client = this.hederaConfig.getClient();
+    const contractId = this.getContractId();
+    const disputerBytes = this.agentIdToBytes32(disputerId);
+
+    const tx = new ContractExecuteTransaction()
+      .setContractId(contractId)
+      .setGas(200000)
+      .setFunction(
+        'returnDisputeBond',
+        new ContractFunctionParameters()
+          .addUint256(disputeId)
+          .addBytes32(disputerBytes),
+      );
+
+    const response = await tx.execute(client);
+    const receipt = await response.getReceipt(client);
+    const txId = response.transactionId.toString();
+
+    if (receipt.status !== Status.Success) {
+      throw new Error(`returnDisputeBond failed with status: ${receipt.status}`);
+    }
+
+    this.logger.log(`Dispute bond returned: dispute #${disputeId}, tx: ${txId}`);
+    return txId;
+  }
+
+  /**
+   * Forfeit dispute bond to the accused (dispute dismissed).
+   */
+  async forfeitDisputeBond(disputeId: number, accusedId: string): Promise<string> {
+    const client = this.hederaConfig.getClient();
+    const contractId = this.getContractId();
+    const accusedBytes = this.agentIdToBytes32(accusedId);
+
+    const tx = new ContractExecuteTransaction()
+      .setContractId(contractId)
+      .setGas(200000)
+      .setFunction(
+        'forfeitDisputeBond',
+        new ContractFunctionParameters()
+          .addUint256(disputeId)
+          .addBytes32(accusedBytes),
+      );
+
+    const response = await tx.execute(client);
+    const receipt = await response.getReceipt(client);
+    const txId = response.transactionId.toString();
+
+    if (receipt.status !== Status.Success) {
+      throw new Error(`forfeitDisputeBond failed with status: ${receipt.status}`);
+    }
+
+    this.logger.log(`Dispute bond forfeited: dispute #${disputeId}, tx: ${txId}`);
+    return txId;
   }
 
   /**

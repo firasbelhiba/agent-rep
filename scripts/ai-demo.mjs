@@ -66,8 +66,9 @@ async function api(path, opts = {}) {
 
 async function aiChat(model, systemPrompt, userMessage) {
   if (!GROQ_API_KEY) {
-    await new Promise(r => setTimeout(r, 1000));
-    return 'Mock response — set GROQ_API_KEY in backend/.env for real AI responses.';
+    console.log(`\n  ${c.red}${c.bold}ERROR: GROQ_API_KEY not set in backend/.env${c.reset}`);
+    console.log(`  ${c.gray}Get a free key at https://console.groq.com${c.reset}\n`);
+    throw new Error('GROQ_API_KEY is required for AI-powered features. Set it in backend/.env');
   }
   const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
     method: 'POST',
@@ -337,10 +338,15 @@ async function scenarioFeedback(preselectedGiver, preselectedTarget) {
     );
     try {
       const parsed = JSON.parse(ratingResponse.replace(/```json?\n?/g, '').replace(/```/g, '').trim());
-      score = Math.min(100, Math.max(1, parseInt(parsed.score) || 75));
-      comment = parsed.comment || 'Good interaction overall.';
+      score = Math.min(100, Math.max(1, parseInt(parsed.score)));
+      if (isNaN(score)) throw new Error('No valid score in AI response');
+      comment = parsed.comment || 'AI evaluation complete.';
     } catch (e) {
-      score = 75; comment = 'Good interaction overall.';
+      log('⚠', c.yellow, `AI response could not be parsed: ${e.message}`);
+      log('⚠', c.yellow, `Raw response: "${ratingResponse.substring(0, 100)}"`);
+      score = parseInt(await ask(`  AI failed to parse. Enter score manually (1-100): ${c.purple}→ ${c.reset}`)) || 50;
+      score = Math.min(100, Math.max(1, score));
+      comment = await ask(`  Comment: ${c.purple}→ ${c.reset}`) || 'Manual fallback after AI parse failure.';
     }
     log('AI', c.green, `${giver.name} decided: Score ${c.bold}${score}/100${c.reset}`);
     console.log(`  ${c.gray}  Reasoning: "${comment}"${c.reset}`);
@@ -422,12 +428,18 @@ async function scenarioFull() {
     `You just had this conversation:\n\n${summary}\n\nRate ${agentB.name}'s performance (1-100). Did they actually answer the question? Were they helpful, accurate, and professional? Be critical.\nReply ONLY with: {"score": <number>, "comment": "<one sentence about their actual performance>"}`
   );
 
-  let score = 85, comment = 'Good interaction.';
+  let score, comment;
   try {
     const parsed = JSON.parse(ratingResponse.replace(/```json?\n?/g, '').replace(/```/g, '').trim());
-    score = Math.min(100, Math.max(1, parseInt(parsed.score) || 85));
-    comment = parsed.comment || comment;
-  } catch (e) {}
+    score = Math.min(100, Math.max(1, parseInt(parsed.score)));
+    if (isNaN(score)) throw new Error('No valid score');
+    comment = parsed.comment || 'AI evaluation complete.';
+  } catch (e) {
+    log('⚠', c.yellow, `AI parse failed: ${e.message}. Raw: "${ratingResponse.substring(0, 80)}"`);
+    score = parseInt(await ask(`  Enter score manually (1-100): ${c.purple}→ ${c.reset}`)) || 50;
+    score = Math.min(100, Math.max(1, score));
+    comment = 'Manual fallback after AI parse failure.';
+  }
 
   log('AI', c.green, `${agentA.name} decided: Score ${c.bold}${score}/100${c.reset}`);
   console.log(`  ${c.gray}  Reasoning: "${comment}"${c.reset}`);
@@ -508,8 +520,16 @@ async function scenarioArbiterCheck() {
     const activity = rep.feedbackCount || 0;
     const tier = rep.trustTier || 'UNVERIFIED';
 
+    // Query real arbiter stake from backend (which reads from smart contract)
+    let arbiterStakeHbar = 0;
+    try {
+      const stakeRes = await api(`/staking/${agent.agentId}`);
+      arbiterStakeHbar = Number(stakeRes.arbiterStake || 0) / 1e8;
+    } catch (e) {}
+
+    const hasArbiterStake = arbiterStakeHbar >= 10;
     const checks = [
-      { label: 'Staked ≥ 10 HBAR', pass: false, icon: '○', detail: '10 HBAR req' },
+      { label: 'Staked ≥ 10 HBAR', pass: hasArbiterStake, icon: hasArbiterStake ? '✓' : '✗', detail: `${arbiterStakeHbar.toFixed(0)} HBAR` },
       { label: `Score ≥ 500 (Trusted)`, pass: score >= 500, icon: score >= 500 ? '✓' : '✗', detail: `${score}/500` },
       { label: `Activity ≥ 10`, pass: activity >= 10, icon: activity >= 10 ? '✓' : '✗', detail: `${activity}/10` },
     ];
@@ -737,8 +757,10 @@ Reply ONLY with: {"upheld": true/false, "reasoning": "<one sentence>"}`
       upheld = !!parsed.upheld;
       notes = parsed.reasoning || 'AI evaluation complete.';
     } catch (e) {
-      upheld = true;
-      notes = 'AI evaluation: dispute appears valid.';
+      log('⚠', c.yellow, `AI parse failed. Raw: "${aiResponse.substring(0, 80)}"`);
+      const manualVote = await ask(`  AI failed to parse. Uphold dispute? (y/n): ${c.purple}→ ${c.reset}`);
+      upheld = manualVote.toLowerCase() === 'y' || manualVote.toLowerCase() === 'yes';
+      notes = 'Manual decision after AI parse failure.';
     }
 
     log('AI', c.green, `${arbiter.name} decided: ${upheld ? c.green + 'UPHELD' : c.red + 'DISMISSED'}${c.reset}`);

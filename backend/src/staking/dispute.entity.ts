@@ -62,6 +62,9 @@ export class DisputeEntity {
   @Column({ name: 'hcs_sequence_number', nullable: true })
   hcsSequenceNumber?: string;
 
+  @Column({ name: 'contract_tx_id', nullable: true })
+  contractTxId?: string;
+
   // Helper methods
   getSelectedArbiters(): string[] {
     return this.selectedArbiters ? JSON.parse(this.selectedArbiters) : [];
