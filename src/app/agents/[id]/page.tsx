@@ -51,6 +51,7 @@ export default function AgentDetailPage({
     arbitrationsResolved?: number;
   } | null>(null);
   const [disputes, setDisputes] = useState<any[]>([]);
+  const [agentNames, setAgentNames] = useState<Record<string, string>>({});
 
   // Community feedback form
   const [showReviewForm, setShowReviewForm] = useState(false);
@@ -197,6 +198,20 @@ export default function AgentDetailPage({
       setReputation(data.reputation);
       setFeedback(data.feedback || []);
       setValidationResponses(data.validations?.responses || []);
+
+      // Fetch all agent names for display
+      try {
+        const allAgentsRes = await fetch(`${API_URL}/api/agents`);
+        if (allAgentsRes.ok) {
+          const allData = await allAgentsRes.json();
+          const names: Record<string, string> = {};
+          (allData.agents || allData).forEach((item: any) => {
+            const a = item.agent || item;
+            names[a.agentId] = a.name;
+          });
+          setAgentNames(names);
+        }
+      } catch {}
 
       if (setupRes?.ok) {
         const setupData = await setupRes.json();
@@ -357,15 +372,15 @@ export default function AgentDetailPage({
                               ) : (
                                 <span className="text-[#9b9b9d]">
                                   <span className="px-1.5 py-0.5 bg-[#8259ef]/10 text-[#b47aff] text-xs rounded border border-[#8259ef]/20 mr-1.5">Agent</span>
-                                  <span className="font-mono">{fb.fromAgentId}</span>
+                                  <Link href={`/agents/${fb.fromAgentId}`} className="text-[#b47aff] hover:underline font-medium">{agentNames[fb.fromAgentId] || fb.fromAgentId}</Link>
                                 </span>
                               )}
                               {fb.tag1 && <span className="px-2 py-0.5 bg-[#8259ef]/10 text-[#b47aff] border border-[#8259ef]/20 text-xs rounded-md">{fb.tag1}</span>}
                               {fb.tag2 && fb.tag2 !== "general" && <span className="px-2 py-0.5 bg-[#8259ef]/10 text-[#b47aff] border border-[#8259ef]/20 text-xs rounded-md">{fb.tag2}</span>}
                             </div>
-                            {/* Show comment for community feedback */}
-                            {fb.feedbackType === "community" && fb.feedbackURI && (
-                              <p className="text-sm text-[#9b9b9d] mt-1 italic">&ldquo;{fb.feedbackURI}&rdquo;</p>
+                            {/* Show comment */}
+                            {(fb.feedbackURI || (fb as any).comment) && (
+                              <p className="text-sm text-[#9b9b9d] mt-1 italic">&ldquo;{fb.feedbackURI || (fb as any).comment}&rdquo;</p>
                             )}
                             <div className="flex items-center gap-3 mt-1 text-xs text-gray-600">
                               <span>{timeAgo(fb.timestamp)}</span>

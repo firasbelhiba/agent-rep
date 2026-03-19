@@ -188,9 +188,11 @@ export class FeedbackController {
       tag1,
       tag2,
       endpoint,       // ERC-8004: evaluated endpoint
-      feedbackURI,
+      feedbackURI: rawFeedbackURI,
       feedbackHash,
+      comment,        // alias for feedbackURI
     } = body;
+    const feedbackURI = rawFeedbackURI || comment;
 
     if (!agentId || value === undefined || !tag1 || !tag2) {
       throw new HttpException(

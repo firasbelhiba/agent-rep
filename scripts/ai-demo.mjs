@@ -184,7 +184,7 @@ async function scenarioConversation() {
   let connectionTopicId = null;
   try {
     const connRes = await api(`/connections/${agentA.agentId}`);
-    const conn = connRes.connections?.find(c => c.requesterAgentId === agentB.agentId || c.targetAgentId === agentB.agentId);
+    const conn = connRes.connections?.find(c => c.fromAgentId === agentB.agentId || c.toAgentId === agentB.agentId);
     if (conn) {
       connectionTopicId = conn.connectionTopicId;
       log('✓', c.green, `Connection found — Topic: ${c.gray}${connectionTopicId}${c.reset}`);
@@ -194,11 +194,11 @@ async function scenarioConversation() {
   if (!connectionTopicId) {
     log('→', c.yellow, 'Creating new HCS-10 connection...');
     try {
-      const res = await api('/connections/request', {
-        method: 'POST', headers: { 'X-Agent-Key': agentA.apiKey },
-        body: JSON.stringify({ targetAgentId: agentB.agentId }),
+      const res = await api('/connections/seed', {
+        method: 'POST',
+        body: JSON.stringify({ fromAgentId: agentA.agentId, toAgentId: agentB.agentId }),
       });
-      connectionTopicId = res.connectionTopicId;
+      connectionTopicId = res.connection?.connectionTopicId || res.connectionTopicId;
       log('✓', c.green, `Connection created — Topic: ${c.gray}${connectionTopicId}${c.reset}`);
     } catch (e) {
       log('⚠', c.yellow, 'Connection failed, continuing without HCS logging');
@@ -293,7 +293,7 @@ async function scenarioFeedback(preselectedGiver, preselectedTarget) {
     });
 
     if (fbRes.statusCode && fbRes.statusCode >= 400) {
-      log('✗', c.red, `Feedback failed: ${fbRes.message}`);
+      log('✗', c.red, `Feedback failed (${fbRes.statusCode}): ${fbRes.message || JSON.stringify(fbRes)}`);
     } else {
       log('✓', c.green, `Feedback submitted!`);
       log('HCS', c.cyan, `FEEDBACK_SUBMITTED logged to Feedback Topic`);
