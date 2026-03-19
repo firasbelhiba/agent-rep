@@ -390,8 +390,8 @@ export class StakingController {
   /** Stake as arbiter (requires 10 HBAR minimum) */
   @Post('arbiter/stake')
   async stakeAsArbiter(
-    @Headers('x-api-key') apiKey: string,
-    @Body() body: { amount: number },
+    @Headers('x-agent-key') apiKey: string,
+    @Body() body: { amount: number; paymentTxId?: string },
   ) {
     try {
       const agent = await this.authenticateAgent(apiKey);
