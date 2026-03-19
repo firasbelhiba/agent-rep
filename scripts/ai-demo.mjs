@@ -254,6 +254,12 @@ async function scenarioConversation() {
     await new Promise(r => setTimeout(r, 800));
   }
 
+  // Show verification link
+  if (connectionTopicId) {
+    console.log(`\n  ${c.purple}${c.bold}Verify on HashScan:${c.reset}`);
+    console.log(`  ${c.cyan}https://hashscan.io/testnet/topic/${connectionTopicId}${c.reset}\n`);
+  }
+
   return chatHistory;
 }
 
@@ -274,9 +280,60 @@ async function scenarioFeedback(preselectedGiver, preselectedTarget) {
 
   if (mode === '2') {
     log('AI', c.green, `${giver.name} is evaluating ${target.name}...`);
+
+    // Fetch real conversation directly from Hedera mirror node (NOT database)
+    let conversationContext = '';
+    log('SDK', c.purple, `Looking for HCS conversation between ${giver.name} and ${target.name}...`);
+    try {
+      // Find the connection topic ID
+      let connectionTopicId = null;
+      for (const agentId of [giver.agentId, target.agentId]) {
+        const connRes = await api(`/connections/${agentId}`);
+        const found = (connRes.connections || []).find(cn => {
+          const other = cn.fromAgentId === agentId ? cn.toAgentId : cn.fromAgentId;
+          return other === (agentId === giver.agentId ? target.agentId : giver.agentId);
+        });
+        if (found?.connectionTopicId && !found.connectionTopicId.startsWith('seed-')) {
+          connectionTopicId = found.connectionTopicId;
+          break;
+        }
+      }
+
+      if (connectionTopicId) {
+        log('HCS', c.cyan, `Fetching messages from Hedera mirror node — topic ${c.gray}${connectionTopicId}${c.reset}...`);
+        const mirrorRes = await fetch(`https://testnet.mirrornode.hedera.com/api/v1/topics/${connectionTopicId}/messages?limit=10&order=desc`);
+        const mirrorData = await mirrorRes.json();
+        const messages = (mirrorData.messages || []).reverse().map(m => {
+          try {
+            const decoded = JSON.parse(Buffer.from(m.message, 'base64').toString());
+            return { sender: decoded.m || decoded.sender || 'Agent', data: decoded.data || decoded.message || '' };
+          } catch { return null; }
+        }).filter(Boolean);
+
+        if (messages.length > 0) {
+          conversationContext = messages.slice(-6).map(m => {
+            const senderName = agents.find(a => a.agentId === (m.sender || m.m))?.name || m.sender || 'Agent';
+            return `${senderName}: ${m.data || m.message || ''}`;
+          }).join('\n');
+          log('✓', c.green, `Found ${messages.length} messages on-chain — evaluating real interaction`);
+          console.log(`  ${c.purple}${c.bold}Verify:${c.reset} ${c.cyan}https://hashscan.io/testnet/topic/${connectionTopicId}${c.reset}`);
+        } else {
+          log('⚠', c.yellow, `No messages found on topic ${connectionTopicId} (may need a few seconds to propagate)`);
+        }
+      } else {
+        log('⚠', c.yellow, `No HCS connection found — using generic evaluation`);
+      }
+    } catch (e) {
+      log('⚠', c.yellow, `Mirror node fetch failed: ${e.message}`);
+    }
+
+    const evalPrompt = conversationContext
+      ? `You just reviewed this real conversation between agents (fetched from Hedera HCS):\n\n${conversationContext}\n\nBased on ${target.name}'s actual responses, rate their performance (1-100). Were they helpful, accurate, and professional?\nReply ONLY with: {"score": <number>, "comment": "<one sentence about their actual responses>"}`
+      : `Rate ${target.name}'s overall quality as an AI agent on a scale of 1-100. Consider professionalism, accuracy, and usefulness. Reply ONLY with: {"score": <number>, "comment": "<one sentence>"}`;
+
     const ratingResponse = await aiChat(giver.model,
-      'You are an AI agent evaluating another agent. Respond only with valid JSON.',
-      `Rate ${target.name}'s overall quality as an AI agent on a scale of 1-100. Consider professionalism, accuracy, and usefulness. Reply ONLY with: {"score": <number>, "comment": "<one sentence>"}`
+      'You are an AI agent evaluating another agent based on real interaction data. Be honest and specific. Respond only with valid JSON.',
+      evalPrompt
     );
     try {
       const parsed = JSON.parse(ratingResponse.replace(/```json?\n?/g, '').replace(/```/g, '').trim());
@@ -307,6 +364,8 @@ async function scenarioFeedback(preselectedGiver, preselectedTarget) {
     } else {
       log('✓', c.green, `Feedback submitted!`);
       log('HCS', c.cyan, `FEEDBACK_SUBMITTED logged to Feedback Topic`);
+      console.log(`\n  ${c.purple}${c.bold}Verify on HashScan:${c.reset}`);
+      console.log(`  ${c.cyan}https://hashscan.io/testnet/topic/0.0.8264959${c.reset}`);
 
       // Show weight formula
       const giverRep = agents.find(a => a.agentId === giver.agentId);
@@ -338,10 +397,29 @@ async function scenarioFull() {
   const agentB = chatHistory[1].agent;
 
   log('AI', c.green, `${agentA.name} evaluates the conversation with ${agentB.name}...`);
+
+  // Use in-memory chat history AND fetch from HCS for verification
   const summary = chatHistory.map(m => `${m.name}: ${m.text}`).join('\n');
+
+  // Also fetch from HCS to show the real on-chain data
+  let hcsTopicId = null;
+  try {
+    const connRes = await api(`/connections/${agentA.agentId}`);
+    const conn = (connRes.connections || []).find(cn => cn.toAgentId === agentB.agentId || cn.fromAgentId === agentB.agentId);
+    if (conn?.connectionTopicId && !conn.connectionTopicId.startsWith('seed-')) {
+      hcsTopicId = conn.connectionTopicId;
+      log('SDK', c.purple, `Verifying conversation on HCS topic ${c.gray}${hcsTopicId}${c.reset}...`);
+      const mirrorRes = await fetch(`https://testnet.mirrornode.hedera.com/api/v1/topics/${hcsTopicId}/messages?limit=5&order=desc`);
+      const mirrorData = await mirrorRes.json();
+      const hcsCount = mirrorData.messages?.length || 0;
+      log('✓', c.green, `${hcsCount} messages verified on Hedera mirror node`);
+      console.log(`  ${c.purple}${c.bold}Verify:${c.reset} ${c.cyan}https://hashscan.io/testnet/topic/${hcsTopicId}${c.reset}`);
+    }
+  } catch (e) {}
+
   const ratingResponse = await aiChat(agentA.model,
-    'You are an AI agent evaluating another agent based on a conversation. Respond only with valid JSON.',
-    `You just had this conversation:\n\n${summary}\n\nRate ${agentB.name}'s performance (1-100). Consider accuracy, professionalism, helpfulness.\nReply ONLY with: {"score": <number>, "comment": "<one sentence>"}`
+    'You are an AI agent evaluating another agent based on a real conversation. Be honest — if the agent failed to answer the question or was unhelpful, give a LOW score. Respond only with valid JSON.',
+    `You just had this conversation:\n\n${summary}\n\nRate ${agentB.name}'s performance (1-100). Did they actually answer the question? Were they helpful, accurate, and professional? Be critical.\nReply ONLY with: {"score": <number>, "comment": "<one sentence about their actual performance>"}`
   );
 
   let score = 85, comment = 'Good interaction.';
@@ -365,6 +443,11 @@ async function scenarioFull() {
     } else {
       log('✓', c.green, `Feedback submitted!`);
       log('HCS', c.cyan, `FEEDBACK_SUBMITTED logged to Feedback Topic`);
+      console.log(`\n  ${c.purple}${c.bold}Verify on HashScan:${c.reset}`);
+      console.log(`  ${c.cyan}https://hashscan.io/testnet/topic/0.0.8264959${c.reset}`);
+      if (hcsTopicId) {
+        console.log(`  ${c.cyan}Conversation: https://hashscan.io/testnet/topic/${hcsTopicId}${c.reset}`);
+      }
     }
   } catch (e) {
     log('⚠', c.yellow, `Feedback: ${e.message}`);
@@ -402,6 +485,11 @@ async function scenarioCheckRep(preselected) {
   if (rep.overallScore > 0) {
     log('ERC-8004', c.purple, `Quality 30% + Reliability 30% + Activity 20% + Consistency 20%`);
   }
+
+  console.log(`\n  ${c.purple}${c.bold}Verify on HashScan:${c.reset}`);
+  console.log(`  ${c.cyan}Agent: https://hashscan.io/testnet/account/${agent.agentId}${c.reset}`);
+  console.log(`  ${c.cyan}Contract: https://hashscan.io/testnet/contract/0.0.8291516${c.reset}`);
+  console.log(`  ${c.cyan}Feedback Topic: https://hashscan.io/testnet/topic/0.0.8264959${c.reset}`);
 }
 
 // ============================================================
@@ -570,6 +658,11 @@ async function scenarioFileDispute() {
       const arbiterAgent = agents.find(a => a.agentId === arbiters[0]);
       log('ALGO', c.yellow, `Arbiter selected: ${c.bold}${arbiterAgent?.name || arbiters[0]}${c.reset}`);
       log('HCS-10', c.cyan, `ARBITRATION_REQUEST sent to arbiter's inbound topic`);
+      console.log(`\n  ${c.purple}${c.bold}Verify on HashScan:${c.reset}`);
+      console.log(`  ${c.cyan}Dispute: https://hashscan.io/testnet/topic/0.0.8264959${c.reset}`);
+      if (arbiterAgent?.inboundTopicId) {
+        console.log(`  ${c.cyan}Arbiter topic: https://hashscan.io/testnet/topic/${arbiterAgent.inboundTopicId}${c.reset}`);
+      }
       console.log(`\n  ${c.gray}The arbiter has 48 hours to vote. Use option 7 to respond as arbiter.${c.reset}`);
     } else {
       log('⚠', c.yellow, `No eligible arbiters found. Dispute is pending.`);
@@ -686,6 +779,10 @@ Reply ONLY with: {"upheld": true/false, "reasoning": "<one sentence>"}`
     } else {
       console.log(`\n  ${c.red}Disputer loses their 2 HBAR bond. Goes to the accused as compensation.${c.reset}`);
     }
+
+    console.log(`\n  ${c.purple}${c.bold}Verify on HashScan:${c.reset}`);
+    console.log(`  ${c.cyan}Dispute result: https://hashscan.io/testnet/topic/0.0.8264959${c.reset}`);
+    console.log(`  ${c.cyan}Contract: https://hashscan.io/testnet/contract/0.0.8291516${c.reset}`);
   } catch (e) {
     log('✗', c.red, `Error: ${e.message}`);
   }

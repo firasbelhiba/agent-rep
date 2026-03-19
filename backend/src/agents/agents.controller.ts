@@ -244,12 +244,15 @@ export class AgentsController {
           balanceTinybar,
           balanceHbar,
           stakeHbar,
-          operatingBalanceTinybar: Number(agent.operatingBalance) || 0,
-          operatingBalanceHbar: (Number(agent.operatingBalance) || 0) / 100_000_000,
+          operatingBalanceTinybar: balanceTinybar || Number(agent.operatingBalance) || 0,
+          operatingBalanceHbar: balanceTinybar ? balanceTinybar / 100_000_000 : (Number(agent.operatingBalance) || 0) / 100_000_000,
           apiKey: agent.apiKey || null,
           hashScanUrl: accountId
             ? `https://hashscan.io/${network}/account/${accountId}`
             : null,
+          reputationScore: 0,
+          feedbackCount: 0,
+          arbiterEligible: false,
         };
       }),
     );

@@ -57,7 +57,24 @@ export default function ProfilePage() {
       });
       if (!res.ok) throw new Error("Failed to fetch balances");
       const data = await res.json();
-      setAgents(data.agents || []);
+      const agentList = data.agents || [];
+
+      // Fetch reputation data for each agent
+      try {
+        const repRes = await fetch(`${API_URL}/api/agents`);
+        const repData = await repRes.json();
+        const allAgents = repData.agents || repData || [];
+        agentList.forEach((a: any) => {
+          const match = allAgents.find((item: any) => (item.agent || item).agentId === a.agentId);
+          if (match) {
+            const rep = match.reputation || {};
+            a.reputationScore = rep.overallScore || 0;
+            a.feedbackCount = rep.feedbackCount || 0;
+          }
+        });
+      } catch { /* ignore */ }
+
+      setAgents(agentList);
     } catch (e: any) {
       setError(e.message);
     } finally {
@@ -368,16 +385,26 @@ export default function ProfilePage() {
                             )}
                           </td>
                           <td className="px-5 py-4 text-center">
-                            <button
-                              onClick={() => {
-                                setArbiterAgent(agent.agentId);
-                                setArbiterAmount("10");
-                                setArbiterResult(null);
-                              }}
-                              className="px-3 py-1 rounded border border-[#8259ef]/30 text-[#8259ef] text-[12px] hover:bg-[#8259ef]/10 transition-colors"
-                            >
-                              Become Arbiter
-                            </button>
+                            {(agent as any).arbiterEligible ? (
+                              <span className="px-3 py-1 rounded bg-emerald-950 text-emerald-400 text-[12px] border border-emerald-800">
+                                ✓ Arbiter
+                              </span>
+                            ) : (agent as any).reputationScore >= 500 && (agent as any).feedbackCount >= 10 ? (
+                              <button
+                                onClick={() => {
+                                  setArbiterAgent(agent.agentId);
+                                  setArbiterAmount("10");
+                                  setArbiterResult(null);
+                                }}
+                                className="px-3 py-1 rounded border border-[#8259ef]/30 text-[#8259ef] text-[12px] hover:bg-[#8259ef]/10 transition-colors"
+                              >
+                                Become Arbiter
+                              </button>
+                            ) : (
+                              <span className="px-3 py-1 rounded bg-white/[0.03] text-[#9b9b9d] text-[11px] border border-white/10 cursor-not-allowed" title={`Needs score ≥ 500 (${(agent as any).reputationScore || 0}) and 10+ feedback (${(agent as any).feedbackCount || 0})`}>
+                                Not Eligible
+                              </span>
+                            )}
                           </td>
                           <td className="px-5 py-4 text-right">
                             {agent.accountId ? (
