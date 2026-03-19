@@ -17,7 +17,7 @@ interface UseWalletReturn extends WalletState {
   disconnect: () => Promise<void>;
   signMessage: (message: string) => Promise<{ signature: Uint8Array; publicKey: string } | null>;
   sendHbar: (toAccountId: string, amountHbar: number) => Promise<{ transactionId: string } | null>;
-  executeContractCall: (contractId: string, functionName: string, params: Uint8Array, amountHbar: number) => Promise<{ transactionId: string } | null>;
+  executeContractCall: (contractId: string, functionName: string, amountHbar: number) => Promise<{ transactionId: string } | null>;
   isLoading: boolean;
   isInitialized: boolean;
 }
@@ -275,20 +275,20 @@ export function useWallet(): UseWalletReturn {
   );
 
   const executeContractCall = useCallback(
-    async (contractId: string, functionName: string, params: Uint8Array, amountHbar: number): Promise<{ transactionId: string } | null> => {
+    async (contractId: string, functionName: string, amountHbar: number): Promise<{ transactionId: string } | null> => {
       try {
         const hc = hcRef.current;
         if (!hc || !state.accountId) {
           throw new Error("Wallet not connected");
         }
 
-        const { AccountId, ContractExecuteTransaction, Hbar, HbarUnit, TransactionId, ContractId } = await import("@hashgraph/sdk");
+        const { AccountId, ContractExecuteTransaction, ContractFunctionParameters, Hbar, HbarUnit, TransactionId, ContractId } = await import("@hashgraph/sdk");
         const fromAccount = AccountId.fromString(state.accountId);
 
         const transaction = new ContractExecuteTransaction()
           .setContractId(ContractId.fromString(contractId))
           .setGas(300000)
-          .setFunction(functionName, params.length > 0 ? params : undefined)
+          .setFunction(functionName, new ContractFunctionParameters())
           .setPayableAmount(Hbar.from(amountHbar, HbarUnit.Hbar))
           .setTransactionId(TransactionId.generate(fromAccount));
 
