@@ -11,6 +11,7 @@ import { Throttle } from '@nestjs/throttler';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { HCS10Service } from './hcs10.service';
+import { HCSService } from './hcs.service';
 import { ConnectionEntity } from './connection.entity';
 import { AgentsService } from '../agents/agents.service';
 
@@ -18,6 +19,7 @@ import { AgentsService } from '../agents/agents.service';
 export class ConnectionsController {
   constructor(
     private readonly hcs10Service: HCS10Service,
+    private readonly hcsService: HCSService,
     private readonly agentsService: AgentsService,
     @InjectRepository(ConnectionEntity)
     private readonly connectionRepo: Repository<ConnectionEntity>,
@@ -59,7 +61,7 @@ export class ConnectionsController {
   }
 
   /**
-   * POST /api/connections/seed — Create a direct active connection (for seeding/demo only).
+   * POST /api/connections/seed — Create a direct active connection with a real HCS topic.
    */
   @Post('seed')
   async seedConnection(
@@ -69,10 +71,33 @@ export class ConnectionsController {
     if (!fromAgentId || !toAgentId) {
       throw new HttpException('fromAgentId and toAgentId are required', HttpStatus.BAD_REQUEST);
     }
+
+    // Check if connection already exists
+    const existing = await this.connectionRepo.findOne({
+      where: [
+        { fromAgentId, toAgentId },
+        { fromAgentId: toAgentId, toAgentId: fromAgentId },
+      ],
+    });
+    if (existing) {
+      return { connection: existing, success: true };
+    }
+
+    // Create a real HCS topic for the connection
+    let connectionTopicId: string;
+    if (this.hcs10Service.isConfigured()) {
+      connectionTopicId = await this.hcsService.createTopic(
+        `AgentRep Connection: ${fromAgentId} <-> ${toAgentId}`,
+      );
+    } else {
+      // Fallback only if Hedera is not configured (local dev without keys)
+      connectionTopicId = `local-${Date.now()}`;
+    }
+
     const connection = this.connectionRepo.create({
       fromAgentId,
       toAgentId,
-      connectionTopicId: `seed-${Date.now()}`,
+      connectionTopicId,
       status: 'active',
       createdAt: Date.now(),
     });

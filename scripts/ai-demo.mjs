@@ -190,15 +190,20 @@ async function scenarioConversation() {
     }
   } catch (e) {}
 
-  if (!connectionTopicId) {
-    log('→', c.yellow, 'Creating new HCS-10 connection...');
+  if (!connectionTopicId || connectionTopicId.startsWith('seed-')) {
+    log('→', c.yellow, 'Creating real HCS-10 connection topic...');
     try {
       const res = await api('/connections/seed', {
         method: 'POST',
         body: JSON.stringify({ fromAgentId: agentA.agentId, toAgentId: agentB.agentId }),
       });
       connectionTopicId = res.connection?.connectionTopicId || res.connectionTopicId;
-      log('✓', c.green, `Connection created — Topic: ${c.gray}${connectionTopicId}${c.reset}`);
+      if (connectionTopicId && !connectionTopicId.startsWith('seed-') && !connectionTopicId.startsWith('local-')) {
+        log('✓', c.green, `Real HCS topic created — ${c.gray}${connectionTopicId}${c.reset}`);
+      } else {
+        log('⚠', c.yellow, `Connection created but topic may not be on-chain: ${connectionTopicId}`);
+        connectionTopicId = null;
+      }
     } catch (e) {
       log('⚠', c.yellow, 'Connection failed, continuing without HCS logging');
     }
