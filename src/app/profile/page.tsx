@@ -534,13 +534,15 @@ export default function ProfilePage() {
                 <div className="space-y-1">
                   <div className="flex items-center justify-between text-sm">
                     <div className="flex items-center gap-2">
-                      <span className="w-5 h-5 rounded-full flex items-center justify-center text-xs bg-white/[0.03] text-[#9b9b9d] border border-white/[0.06]">○</span>
-                      <span className="text-[#9b9b9d]">Trusted Tier</span>
+                      <span className={`w-5 h-5 rounded-full flex items-center justify-center text-xs ${(agents.find(a => a.agentId === arbiterAgent)?.reputationScore || 0) >= 500 ? 'bg-emerald-950 text-emerald-400 border border-emerald-800' : 'bg-white/[0.03] text-[#9b9b9d] border border-white/[0.06]'}`}>
+                        {(agents.find(a => a.agentId === arbiterAgent)?.reputationScore || 0) >= 500 ? '✓' : '○'}
+                      </span>
+                      <span className={(agents.find(a => a.agentId === arbiterAgent)?.reputationScore || 0) >= 500 ? 'text-emerald-400' : 'text-[#9b9b9d]'}>Trusted Tier</span>
                     </div>
-                    <span className="text-xs text-[#9b9b9d]">Score ≥ 500</span>
+                    <span className="text-xs text-[#9b9b9d]">Score ≥ 500 ({agents.find(a => a.agentId === arbiterAgent)?.reputationScore || 0}/500)</span>
                   </div>
                   <div className="ml-7 h-1.5 bg-white/[0.06] rounded-full overflow-hidden">
-                    <div className="h-full bg-amber-500 rounded-full" style={{ width: '20%' }} />
+                    <div className={`h-full rounded-full ${(agents.find(a => a.agentId === arbiterAgent)?.reputationScore || 0) >= 500 ? 'bg-emerald-500' : 'bg-amber-500'}`} style={{ width: `${Math.min(100, ((agents.find(a => a.agentId === arbiterAgent)?.reputationScore || 0) / 500) * 100)}%` }} />
                   </div>
                 </div>
 
@@ -548,13 +550,15 @@ export default function ProfilePage() {
                 <div className="space-y-1">
                   <div className="flex items-center justify-between text-sm">
                     <div className="flex items-center gap-2">
-                      <span className="w-5 h-5 rounded-full flex items-center justify-center text-xs bg-white/[0.03] text-[#9b9b9d] border border-white/[0.06]">○</span>
-                      <span className="text-[#9b9b9d]">Activity</span>
+                      <span className={`w-5 h-5 rounded-full flex items-center justify-center text-xs ${(agents.find(a => a.agentId === arbiterAgent)?.feedbackCount || 0) >= 10 ? 'bg-emerald-950 text-emerald-400 border border-emerald-800' : 'bg-white/[0.03] text-[#9b9b9d] border border-white/[0.06]'}`}>
+                        {(agents.find(a => a.agentId === arbiterAgent)?.feedbackCount || 0) >= 10 ? '✓' : '○'}
+                      </span>
+                      <span className={(agents.find(a => a.agentId === arbiterAgent)?.feedbackCount || 0) >= 10 ? 'text-emerald-400' : 'text-[#9b9b9d]'}>Activity</span>
                     </div>
-                    <span className="text-xs text-[#9b9b9d]">≥ 10 interactions</span>
+                    <span className="text-xs text-[#9b9b9d]">≥ 10 interactions ({agents.find(a => a.agentId === arbiterAgent)?.feedbackCount || 0}/10)</span>
                   </div>
                   <div className="ml-7 h-1.5 bg-white/[0.06] rounded-full overflow-hidden">
-                    <div className="h-full bg-amber-500 rounded-full" style={{ width: '30%' }} />
+                    <div className={`h-full rounded-full ${(agents.find(a => a.agentId === arbiterAgent)?.feedbackCount || 0) >= 10 ? 'bg-emerald-500' : 'bg-amber-500'}`} style={{ width: `${Math.min(100, ((agents.find(a => a.agentId === arbiterAgent)?.feedbackCount || 0) / 10) * 100)}%` }} />
                   </div>
                 </div>
               </div>
