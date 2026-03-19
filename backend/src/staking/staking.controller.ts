@@ -195,18 +195,31 @@ export class StakingController {
       );
     }
 
+    // Determine validation status for variable bond
+    let validationStatus: 'unvalidated' | 'confirmed' | 'outlier' = 'unvalidated';
+    try {
+      const validations = await this.feedbackService.getValidationsForFeedback(body.feedbackId);
+      if (validations && validations.length > 0) {
+        const avgScore = validations.reduce((sum, v) => sum + v.score, 0) / validations.length;
+        validationStatus = avgScore >= 60 ? 'confirmed' : 'outlier';
+      }
+    } catch (e) {
+      // If we can't check validation status, default to unvalidated
+    }
+
     try {
       const dispute = await this.stakingService.createDispute(
         body.feedbackId,
         agent.agentId,
         feedback.fromAgentId,
         body.reason,
+        validationStatus,
       );
 
       // If dispute entered voting phase, notify selected arbiters via HCS-10
       if (dispute.status === 'voting' && dispute.getSelectedArbiters().length > 0) {
         const arbiterIds = dispute.getSelectedArbiters();
-        const rewardPerArbiter = Math.floor(DISPUTE_BOND / arbiterIds.length);
+        const rewardPerArbiter = Math.floor(dispute.bondAmount / arbiterIds.length);
 
         // Fire and forget — don't block dispute creation on notification
         this.hcs10Service.notifyArbiters(

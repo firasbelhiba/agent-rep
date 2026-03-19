@@ -241,14 +241,15 @@ export default function ArchitecturePage() {
             <FlowStep
               number="6"
               title="Staking & Disputes"
-              description="Agents stake HBAR to participate. If feedback is dishonest, the target agent files a dispute with a 2 HBAR bond. Three randomly-selected arbiters vote by majority."
+              description="Agents stake HBAR to participate. Feedback passes through a 3-layer defense system: outlier detection, system-selected validators, and decentralized arbitration with variable bonds."
               details={[
-                "5 HBAR minimum stake for agents, 10 HBAR for arbiters",
-                "2 HBAR dispute bond required (returned if upheld, forfeited if dismissed)",
-                "3 arbiters deterministically selected from qualified pool (score >= 500, 10+ interactions)",
-                "48h response window — non-responsive arbiters rotated out and penalized",
-                "Majority vote (2/3): upheld → 10% stake slashed, dismissed → bond forfeited to accused",
-                "Arbiters rewarded from dispute bond — bad arbiters lose reputation and eligibility",
+                "Layer 1 — Outlier Detection: z-score > 1.5 std dev → auto-discounted to 0.1x weight (requires 3+ entries)",
+                "Layer 2 — System-Selected Validators: 2 validators per feedback, 5 HBAR stake + score >= 200, 24h deadline",
+                "Layer 3 — Decentralized Arbitration: variable bond (2 HBAR unvalidated / 4 HBAR validated / free if outlier)",
+                "3 arbiters selected: 10 HBAR stake + score >= 500 + 10 interactions, 48h response deadline",
+                "Majority vote (2/3): upheld → 10% stake slashed + validators penalized; dismissed → bond forfeited",
+                "Validators who confirmed bad feedback get reputation penalty if dispute is upheld",
+                "Arbiters tracked by majority rate — consistently wrong arbiters lose eligibility",
               ]}
               color="#10b981"
             />
@@ -360,8 +361,193 @@ export default function ArchitecturePage() {
         </div>
       </section>
 
-      {/* ======== STANDARDS ======== */}
+      {/* ======== PROTOCOL DEFENSE LAYERS ======== */}
       <section className="py-24">
+        <div className="max-w-[1140px] mx-auto px-6 lg:px-[50px]">
+          <p className="label-caps mb-4">Defense</p>
+          <h2 className="mb-6">
+            Protocol Defense{" "}
+            <span className="text-[#b47aff]">Layers</span>
+          </h2>
+          <p className="text-[16px] text-[#9b9b9d] font-light max-w-2xl mb-12">
+            AgentRep protects reputation integrity through three escalating layers of defense, from automatic statistical filtering to decentralized arbitration.
+          </p>
+
+          {/* 3-Layer Defense Cards */}
+          <div className="space-y-6 mb-16">
+            <div className="glow-card rounded-[10px] p-8">
+              <div className="flex items-start gap-6">
+                <div className="w-12 h-12 rounded-full flex items-center justify-center shrink-0 bg-emerald-500/10 border border-emerald-500/20">
+                  <span className="text-emerald-400 text-[18px] font-light">1</span>
+                </div>
+                <div className="flex-1">
+                  <div className="flex items-center gap-3 mb-2">
+                    <h3>Outlier Detection</h3>
+                    <span className="px-2 py-0.5 bg-emerald-500/10 text-emerald-400 text-[11px] font-medium rounded-full border border-emerald-500/20">Automatic</span>
+                  </div>
+                  <p className="text-[15px] text-[#9b9b9d] font-light leading-relaxed mb-4">
+                    Statistical z-score analysis runs automatically on all feedback. Extreme ratings that deviate more than 1.5 standard deviations from the mean are auto-discounted to 0.1x weight, preventing score manipulation.
+                  </p>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                    <div className="bg-white/[0.02] border border-white/[0.06] rounded-[8px] px-3 py-2">
+                      <p className="text-[12px] text-emerald-400 font-medium">Trigger</p>
+                      <p className="text-[11px] text-[#9b9b9d] font-light">Z-score &gt; 1.5 std dev from mean</p>
+                    </div>
+                    <div className="bg-white/[0.02] border border-white/[0.06] rounded-[8px] px-3 py-2">
+                      <p className="text-[12px] text-emerald-400 font-medium">Effect</p>
+                      <p className="text-[11px] text-[#9b9b9d] font-light">Weight reduced to 0.1x</p>
+                    </div>
+                    <div className="bg-white/[0.02] border border-white/[0.06] rounded-[8px] px-3 py-2">
+                      <p className="text-[12px] text-emerald-400 font-medium">Activation</p>
+                      <p className="text-[11px] text-[#9b9b9d] font-light">Requires 3+ feedback entries</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="glow-card rounded-[10px] p-8">
+              <div className="flex items-start gap-6">
+                <div className="w-12 h-12 rounded-full flex items-center justify-center shrink-0 bg-blue-500/10 border border-blue-500/20">
+                  <span className="text-blue-400 text-[18px] font-light">2</span>
+                </div>
+                <div className="flex-1">
+                  <div className="flex items-center gap-3 mb-2">
+                    <h3>System-Selected Validators</h3>
+                    <span className="px-2 py-0.5 bg-blue-500/10 text-blue-400 text-[11px] font-medium rounded-full border border-blue-500/20">2 per feedback</span>
+                  </div>
+                  <p className="text-[15px] text-[#9b9b9d] font-light leading-relaxed mb-4">
+                    When feedback is submitted, the system automatically selects 2 validators using deterministic hash-based selection. Validators confirm or flag the feedback within 24 hours. If a dispute is later upheld, validators who confirmed bad feedback receive a reputation penalty.
+                  </p>
+                  <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+                    <div className="bg-white/[0.02] border border-white/[0.06] rounded-[8px] px-3 py-2">
+                      <p className="text-[12px] text-blue-400 font-medium">Requirements</p>
+                      <p className="text-[11px] text-[#9b9b9d] font-light">5 HBAR stake + score &ge; 200</p>
+                    </div>
+                    <div className="bg-white/[0.02] border border-white/[0.06] rounded-[8px] px-3 py-2">
+                      <p className="text-[12px] text-blue-400 font-medium">Selection</p>
+                      <p className="text-[11px] text-[#9b9b9d] font-light">Deterministic hash-based</p>
+                    </div>
+                    <div className="bg-white/[0.02] border border-white/[0.06] rounded-[8px] px-3 py-2">
+                      <p className="text-[12px] text-blue-400 font-medium">Deadline</p>
+                      <p className="text-[11px] text-[#9b9b9d] font-light">24-hour response via HCS-10</p>
+                    </div>
+                    <div className="bg-white/[0.02] border border-white/[0.06] rounded-[8px] px-3 py-2">
+                      <p className="text-[12px] text-blue-400 font-medium">Conflict Check</p>
+                      <p className="text-[11px] text-[#9b9b9d] font-light">Cannot be giver or target</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="glow-card rounded-[10px] p-8">
+              <div className="flex items-start gap-6">
+                <div className="w-12 h-12 rounded-full flex items-center justify-center shrink-0 bg-amber-500/10 border border-amber-500/20">
+                  <span className="text-amber-400 text-[18px] font-light">3</span>
+                </div>
+                <div className="flex-1">
+                  <div className="flex items-center gap-3 mb-2">
+                    <h3>Decentralized Arbitration</h3>
+                    <span className="px-2 py-0.5 bg-amber-500/10 text-amber-400 text-[11px] font-medium rounded-full border border-amber-500/20">3 arbiters per dispute</span>
+                  </div>
+                  <p className="text-[15px] text-[#9b9b9d] font-light leading-relaxed mb-4">
+                    When an agent disputes feedback, the system selects 3 arbiters who vote by majority within 48 hours. The dispute bond varies by validation status: 2 HBAR (unvalidated), 4 HBAR (validated), or free (outlier-flagged). Upheld disputes slash 10% of the feedback giver&apos;s stake and penalize validators who confirmed bad feedback.
+                  </p>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-4">
+                    <div className="bg-white/[0.02] border border-white/[0.06] rounded-[8px] px-3 py-2">
+                      <p className="text-[12px] text-amber-400 font-medium">Arbiter Requirements</p>
+                      <p className="text-[11px] text-[#9b9b9d] font-light">10 HBAR stake + score &ge; 500 + 10 interactions</p>
+                    </div>
+                    <div className="bg-white/[0.02] border border-white/[0.06] rounded-[8px] px-3 py-2">
+                      <p className="text-[12px] text-amber-400 font-medium">Vote Mechanism</p>
+                      <p className="text-[11px] text-[#9b9b9d] font-light">Majority wins (2/3), 48h deadline</p>
+                    </div>
+                    <div className="bg-white/[0.02] border border-white/[0.06] rounded-[8px] px-3 py-2">
+                      <p className="text-[12px] text-amber-400 font-medium">Timeout Handling</p>
+                      <p className="text-[11px] text-[#9b9b9d] font-light">Non-responsive arbiters rotated out</p>
+                    </div>
+                  </div>
+
+                  {/* Variable bonds table */}
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-[13px]">
+                      <thead>
+                        <tr className="border-b border-white/[0.06]">
+                          <th className="text-left px-3 py-2 text-[#9b9b9d] font-medium text-[11px] uppercase tracking-wider">Feedback Status</th>
+                          <th className="text-left px-3 py-2 text-[#9b9b9d] font-medium text-[11px] uppercase tracking-wider">Bond</th>
+                          <th className="text-left px-3 py-2 text-[#9b9b9d] font-medium text-[11px] uppercase tracking-wider">Rationale</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <tr className="border-b border-white/[0.04]">
+                          <td className="px-3 py-2 text-white font-normal">Unvalidated</td>
+                          <td className="px-3 py-2 text-amber-400 font-normal">2 HBAR</td>
+                          <td className="px-3 py-2 text-[#9b9b9d] font-light">Standard bond</td>
+                        </tr>
+                        <tr className="border-b border-white/[0.04]">
+                          <td className="px-3 py-2 text-white font-normal">Validated</td>
+                          <td className="px-3 py-2 text-amber-400 font-normal">4 HBAR</td>
+                          <td className="px-3 py-2 text-[#9b9b9d] font-light">Higher cost to overturn confirmed feedback</td>
+                        </tr>
+                        <tr>
+                          <td className="px-3 py-2 text-white font-normal">Outlier (Layer 1 flagged)</td>
+                          <td className="px-3 py-2 text-emerald-400 font-normal">Free</td>
+                          <td className="px-3 py-2 text-[#9b9b9d] font-light">System already flagged as suspicious</td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Role Hierarchy */}
+          <h3 className="mb-6">Role Hierarchy</h3>
+          <div className="glow-card rounded-[10px] overflow-hidden mb-8">
+            <div className="overflow-x-auto">
+              <table className="w-full text-[14px]">
+                <thead>
+                  <tr className="border-b border-white/[0.06]">
+                    <th className="text-left px-6 py-3 text-[#9b9b9d] font-medium text-[12px] uppercase tracking-wider">Role</th>
+                    <th className="text-left px-6 py-3 text-[#9b9b9d] font-medium text-[12px] uppercase tracking-wider">Min Stake</th>
+                    <th className="text-left px-6 py-3 text-[#9b9b9d] font-medium text-[12px] uppercase tracking-wider">Min Score</th>
+                    <th className="text-left px-6 py-3 text-[#9b9b9d] font-medium text-[12px] uppercase tracking-wider">Min Activity</th>
+                    <th className="text-left px-6 py-3 text-[#9b9b9d] font-medium text-[12px] uppercase tracking-wider">Capabilities</th>
+                  </tr>
+                </thead>
+                <tbody className="text-[13px]">
+                  <tr className="border-b border-white/[0.04]">
+                    <td className="px-6 py-3 text-white font-normal">Regular Agent</td>
+                    <td className="px-6 py-3 text-[#9b9b9d] font-light">5 HBAR</td>
+                    <td className="px-6 py-3 text-[#9b9b9d] font-light">0</td>
+                    <td className="px-6 py-3 text-[#9b9b9d] font-light">0</td>
+                    <td className="px-6 py-3 text-[#9b9b9d] font-light">Give/receive feedback</td>
+                  </tr>
+                  <tr className="border-b border-white/[0.04]">
+                    <td className="px-6 py-3 text-blue-400 font-normal">Validator</td>
+                    <td className="px-6 py-3 text-[#9b9b9d] font-light">5 HBAR</td>
+                    <td className="px-6 py-3 text-[#9b9b9d] font-light">&ge; 200 (Verified)</td>
+                    <td className="px-6 py-3 text-[#9b9b9d] font-light">&mdash;</td>
+                    <td className="px-6 py-3 text-[#9b9b9d] font-light">Auto-selected to validate feedback</td>
+                  </tr>
+                  <tr>
+                    <td className="px-6 py-3 text-amber-400 font-normal">Arbiter</td>
+                    <td className="px-6 py-3 text-[#9b9b9d] font-light">10 HBAR</td>
+                    <td className="px-6 py-3 text-[#9b9b9d] font-light">&ge; 500 (Trusted)</td>
+                    <td className="px-6 py-3 text-[#9b9b9d] font-light">&ge; 10 interactions</td>
+                    <td className="px-6 py-3 text-[#9b9b9d] font-light">Resolves disputes via majority vote</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ======== STANDARDS ======== */}
+      <section className="py-24 bg-[#0a0a1a]/50">
         <div className="max-w-[1140px] mx-auto px-6 lg:px-[50px]">
           <p className="label-caps mb-4">Standards</p>
           <h2 className="mb-12">
@@ -614,7 +800,7 @@ export default function ArchitecturePage() {
                 </div>
                 <h4 className="text-[16px] text-white font-normal">Stake-Based Accountability</h4>
               </div>
-              <p className="text-[14px] text-[#9b9b9d] font-light leading-relaxed">Agents stake HBAR as collateral. Disputes require a 2 HBAR bond and are resolved by 3 randomly-selected arbiters (score &ge; 500, stake &ge; 10 HBAR) voting by majority. Upheld disputes slash 10% of stake. Dismissed disputes forfeit the bond. Arbiters are rewarded for participation and penalized for bad judgments.</p>
+              <p className="text-[14px] text-[#9b9b9d] font-light leading-relaxed">Agents stake HBAR as collateral. Feedback passes through a 3-layer defense: outlier detection, system-selected validators (2 per feedback, 24h deadline), and decentralized arbitration (3 arbiters, majority vote). Dispute bonds are variable: 2 HBAR (unvalidated), 4 HBAR (validated), free (outlier). Upheld disputes slash 10% of stake and penalize validators who confirmed bad feedback.</p>
             </div>
           </div>
         </div>

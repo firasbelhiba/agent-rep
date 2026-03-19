@@ -18,9 +18,19 @@ export const SLASH_AMOUNT = 50_000_000;
 export const MIN_ARBITER_STAKE = 1_000_000_000; // 10 HBAR
 export const MIN_ARBITER_SCORE = 500;
 export const MIN_ARBITER_INTERACTIONS = 10;
-export const DISPUTE_BOND = 200_000_000; // 2 HBAR
+export const DISPUTE_BOND_UNVALIDATED = 200_000_000; // 2 HBAR — feedback not yet validated
+export const DISPUTE_BOND_VALIDATED = 400_000_000;    // 4 HBAR — feedback already validated & confirmed
+export const DISPUTE_BOND_OUTLIER = 0;                // Free — feedback already flagged as outlier
+export const DISPUTE_BOND = 200_000_000;              // Default fallback (2 HBAR)
 export const ARBITER_PANEL_SIZE = 3;
 export const ARBITER_TIMEOUT_MS = 48 * 60 * 60 * 1000; // 48 hours
+export const VALIDATOR_PENALTY_PERCENT = 5; // 5% reputation penalty for validators who confirmed bad feedback
+
+// Validator selection requirements (lower than arbiter)
+export const MIN_VALIDATOR_STAKE = 500_000_000; // 5 HBAR (same as regular stake)
+export const MIN_VALIDATOR_SCORE = 200; // VERIFIED tier
+export const VALIDATOR_PANEL_SIZE = 2; // 2 validators per feedback
+export const VALIDATOR_TIMEOUT_MS = 24 * 60 * 60 * 1000; // 24 hours
 
 @Injectable()
 export class StakingService {
@@ -183,11 +193,73 @@ export class StakingService {
     return selected;
   }
 
+  // ---- Validator Selection Methods ----
+
+  /**
+   * Get agents eligible to validate feedback.
+   * Lower threshold than arbiters: score >= 200 (VERIFIED), stake >= 5 HBAR.
+   * Excludes the feedback giver and the target agent.
+   */
+  async getEligibleValidators(excludeAgentIds: string[] = []): Promise<StakeEntity[]> {
+    const allStakes = await this.stakeRepo.find();
+    return allStakes.filter(s =>
+      !excludeAgentIds.includes(s.agentId) &&
+      Number(s.balance) >= MIN_VALIDATOR_STAKE
+    );
+  }
+
+  /**
+   * Select validators for a feedback entry using deterministic hash.
+   * Called automatically when feedback is submitted.
+   */
+  selectValidators(eligibleValidators: StakeEntity[], feedbackId: string, timestamp: number): string[] {
+    if (eligibleValidators.length < VALIDATOR_PANEL_SIZE) {
+      return []; // Not enough validators — skip auto-validation
+    }
+
+    const seed = `val-${feedbackId}-${timestamp}`;
+    const selected: string[] = [];
+    const pool = [...eligibleValidators];
+
+    for (let i = 0; i < VALIDATOR_PANEL_SIZE && pool.length > 0; i++) {
+      let hash = 0;
+      for (let j = 0; j < seed.length; j++) {
+        hash = ((hash << 5) - hash + seed.charCodeAt(j) * (i + 1)) | 0;
+      }
+      const index = Math.abs(hash) % pool.length;
+      selected.push(pool[index].agentId);
+      pool.splice(index, 1);
+    }
+
+    this.logger.log(`Selected ${selected.length} validators for feedback ${feedbackId}: ${selected.join(', ')}`);
+    return selected;
+  }
+
+  /**
+   * Auto-select validators when feedback is submitted.
+   * Returns the selected validator agent IDs so the caller can notify them via HCS-10.
+   */
+  async autoSelectValidatorsForFeedback(
+    feedbackId: string,
+    feedbackGiverId: string,
+    targetAgentId: string,
+  ): Promise<string[]> {
+    const eligible = await this.getEligibleValidators([feedbackGiverId, targetAgentId]);
+    if (eligible.length < VALIDATOR_PANEL_SIZE) {
+      this.logger.log(`Not enough eligible validators (${eligible.length}/${VALIDATOR_PANEL_SIZE}). Skipping auto-validation.`);
+      return [];
+    }
+
+    const selectedIds = this.selectValidators(eligible, feedbackId, Date.now());
+    return selectedIds;
+  }
+
   async createDispute(
     feedbackId: string,
     disputerId: string,
     accusedId: string,
     reason: string,
+    validationStatus?: 'unvalidated' | 'confirmed' | 'outlier',
   ): Promise<DisputeEntity> {
     const existing = await this.disputeRepo.findOne({
       where: [
@@ -199,6 +271,23 @@ export class StakingService {
       throw new Error('A dispute is already pending for this feedback');
     }
 
+    // Variable bond based on validation status
+    let bondAmount: number;
+    switch (validationStatus) {
+      case 'confirmed':
+        bondAmount = DISPUTE_BOND_VALIDATED; // 4 HBAR — challenging validated feedback costs more
+        break;
+      case 'outlier':
+        bondAmount = DISPUTE_BOND_OUTLIER; // Free — system already flagged it
+        break;
+      case 'unvalidated':
+      default:
+        bondAmount = DISPUTE_BOND_UNVALIDATED; // 2 HBAR — standard
+        break;
+    }
+
+    this.logger.log(`Dispute bond for feedback ${feedbackId}: ${bondAmount / 1e8} HBAR (status: ${validationStatus || 'unvalidated'})`);
+
     // Select arbiters
     const eligibleArbiters = await this.getEligibleArbiters([disputerId, accusedId]);
     const now = Date.now();
@@ -207,11 +296,9 @@ export class StakingService {
     let status = 'pending';
 
     if (eligibleArbiters.length >= ARBITER_PANEL_SIZE) {
-      // We have enough arbiters for a panel
       selectedArbiterIds = this.selectArbiters(eligibleArbiters, 0, now);
       status = 'voting';
     }
-    // If not enough arbiters, stay in 'pending' — legacy single-arbiter mode
 
     const dispute = this.disputeRepo.create({
       feedbackId,
@@ -219,7 +306,7 @@ export class StakingService {
       accusedId,
       reason,
       status,
-      bondAmount: DISPUTE_BOND,
+      bondAmount,
       votingDeadline: now + ARBITER_TIMEOUT_MS,
       createdAt: now,
     });
@@ -266,7 +353,7 @@ export class StakingService {
     let txId: string | undefined;
 
     if (upheldCount >= majority) {
-      // Dispute upheld — slash accused
+      // Dispute upheld — slash the feedback giver (accused)
       dispute.status = 'upheld';
       dispute.resolvedBy = 'arbiter-panel';
       dispute.resolvedAt = Date.now();
@@ -278,6 +365,9 @@ export class StakingService {
       dispute.slashAmount = this.stakingContract.isConfigured()
         ? Math.floor(Number(slashedStake.balance) * SLASH_PERCENT / 100)
         : SLASH_AMOUNT;
+
+      // Penalize validators who confirmed the bad feedback
+      await this.penalizeValidatorsForBadFeedback(dispute.feedbackId);
 
       finalized = true;
       await this.updateArbiterStats(selectedArbiters, votes, 'upheld');
@@ -323,6 +413,52 @@ export class StakingService {
       }
 
       await this.stakeRepo.save(stake);
+    }
+  }
+
+  /**
+   * Penalize validators who confirmed feedback that was later disputed and upheld.
+   * Validators who flagged it as outlier are NOT penalized (they did their job).
+   * Penalty: reputation-based — their stake's validationPenalties counter increases,
+   * which feeds back into the reputation algorithm to reduce their validation weight.
+   */
+  private async penalizeValidatorsForBadFeedback(feedbackId: string) {
+    try {
+      // Find all validation responses for this feedback
+      // Validators who scored >= 60 (confirmed) get penalized
+      // Validators who scored < 40 (flagged as bad) are rewarded
+      const validations = await this.stakeRepo.manager.query(
+        `SELECT "validatorId", "score" FROM "validation_response" WHERE "feedbackId" = $1`,
+        [feedbackId],
+      );
+
+      if (!validations || validations.length === 0) {
+        this.logger.log(`No validators to penalize for feedback ${feedbackId}`);
+        return;
+      }
+
+      for (const val of validations) {
+        const stake = await this.stakeRepo.findOne({ where: { agentId: val.validatorId } });
+        if (!stake) continue;
+
+        if (val.score >= 60) {
+          // This validator confirmed bad feedback — penalize
+          stake.validationPenalties = (stake.validationPenalties || 0) + 1;
+          this.logger.warn(
+            `Validator ${val.validatorId} penalized: confirmed bad feedback ${feedbackId} (score: ${val.score})`,
+          );
+        } else {
+          // This validator correctly flagged it — reward
+          stake.validationRewards = (stake.validationRewards || 0) + 1;
+          this.logger.log(
+            `Validator ${val.validatorId} rewarded: correctly flagged bad feedback ${feedbackId} (score: ${val.score})`,
+          );
+        }
+
+        await this.stakeRepo.save(stake);
+      }
+    } catch (e) {
+      this.logger.error(`Failed to penalize validators for feedback ${feedbackId}: ${e.message}`);
     }
   }
 

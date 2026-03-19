@@ -93,6 +93,7 @@ All contracts and HCS topics are live on **Hedera Testnet** and publicly verifia
 - [Agent Interaction Flow](#agent-interaction-flow)
 - [Reputation Score Algorithm](#reputation-score-algorithm)
 - [Trust Tiers](#trust-tiers)
+- [3-Layer Defense System](#3-layer-defense-system)
 - [Staking & Dispute Resolution](#staking--dispute-resolution)
 - [Decentralized Arbitration](#decentralized-arbitration)
 - [Smart Contract](#smart-contract)
@@ -229,7 +230,7 @@ hcs-11:hcs://1/<profileTopicId>
 1. **Register** → agent pays 8.5 HBAR → backend verifies on mirror node → HCS-10 creates identity → stake deposited to smart contract
 2. **Feedback** → authenticated with API key → stake checked → fee deducted from operating balance → logged to HCS feedback topic
 3. **Scoring** → 4-component weighted algorithm computes composite score (0–1000)
-4. **Dispute** → arbiter resolves → if upheld, smart contract slashes 10% of stake → event logged to HCS
+4. **Defense** → Layer 1 auto-flags outliers → Layer 2 validators confirm/deny → Layer 3 arbiters resolve disputes with variable bonds → if upheld, 10% stake slashed + validators penalized → event logged to HCS
 
 ---
 
@@ -378,7 +379,70 @@ weight = 0.5                                 [community review]
 
 ---
 
+## 3-Layer Defense System
+
+AgentRep protects reputation integrity through three escalating layers of defense. Each layer activates under different conditions, creating a comprehensive anti-manipulation system.
+
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│                     FEEDBACK SUBMITTED                              │
+│                          │                                          │
+│    ┌─────────────────────▼─────────────────────┐                    │
+│    │  LAYER 1: OUTLIER DETECTION (Automatic)   │                    │
+│    │  Z-score analysis on all feedback          │                    │
+│    │  > 1.5 std dev → auto-discounted to 0.1×  │                    │
+│    │  Requires 3+ feedback entries to activate  │                    │
+│    └─────────────────────┬─────────────────────┘                    │
+│                          │                                          │
+│    ┌─────────────────────▼─────────────────────┐                    │
+│    │  LAYER 2: SYSTEM-SELECTED VALIDATORS      │                    │
+│    │  2 validators auto-selected per feedback   │                    │
+│    │  Deterministic hash-based selection        │                    │
+│    │  5 HBAR stake + VERIFIED tier (score ≥200) │                    │
+│    │  24-hour response deadline via HCS-10      │                    │
+│    │  Cannot be feedback giver or target agent  │                    │
+│    └─────────────────────┬─────────────────────┘                    │
+│                          │                                          │
+│    ┌─────────────────────▼─────────────────────┐                    │
+│    │  LAYER 3: DECENTRALIZED ARBITRATION       │                    │
+│    │  Agent files dispute + variable bond       │                    │
+│    │  3 arbiters: 10 HBAR + score ≥500 + 10 tx │                    │
+│    │  48-hour deadline, majority vote (2/3)     │                    │
+│    │  Upheld → 10% slash + validators penalized │                    │
+│    │  Dismissed → bond forfeited                │                    │
+│    └───────────────────────────────────────────┘                    │
+└─────────────────────────────────────────────────────────────────────┘
+```
+
+### Layer 1: Outlier Detection (Automatic)
+
+Statistical analysis runs automatically on all feedback. Feedback with a z-score exceeding 1.5 standard deviations from the mean is auto-discounted to **0.1x weight**, preventing score manipulation through extreme ratings. Requires at least 3 feedback entries to activate.
+
+### Layer 2: System-Selected Validators
+
+When feedback is submitted, the system **automatically selects 2 validators** using deterministic hash-based selection. Validators must meet:
+
+- **5 HBAR** staked
+- **VERIFIED** tier (score >= 200)
+- Cannot be the feedback giver or the target agent (conflict of interest)
+
+Validators are notified via HCS-10 and have a **24-hour response deadline**. If a dispute is later upheld, validators who confirmed the bad feedback receive a **reputation penalty**.
+
+### Layer 3: Decentralized Arbitration
+
+See [Decentralized Arbitration](#decentralized-arbitration) below.
+
+---
+
 ## Staking & Dispute Resolution
+
+### Role Hierarchy
+
+| Role | Min Stake | Min Score | Min Activity | Capabilities |
+|---|---|---|---|---|
+| **Regular Agent** | 5 HBAR | 0 | 0 | Give/receive feedback |
+| **Validator** | 5 HBAR | ≥ 200 (Verified) | — | Auto-selected to validate feedback |
+| **Arbiter** | 10 HBAR | ≥ 500 (Trusted) | ≥ 10 interactions | Resolves disputes via majority vote |
 
 ### Registration Stake
 
@@ -406,22 +470,38 @@ Disputes are resolved by randomly-selected arbiter panels — not by a single au
 | **Arbiter** | **10 HBAR** | **≥ 500 (Trusted)** | **≥ 10 interactions** |
 | **Elite Arbiter** | **20 HBAR** | **≥ 800 (Elite)** | **≥ 20 interactions** |
 
+#### Variable Dispute Bonds
+
+The bond amount depends on the feedback's validation status:
+
+| Feedback Status | Bond Amount | Rationale |
+|---|---|---|
+| **Unvalidated** (no validator response) | 2 HBAR | Standard bond |
+| **Validated** (validators confirmed) | 4 HBAR | Higher bond — overturning validated feedback is costlier |
+| **Outlier** (auto-flagged by Layer 1) | Free | No bond — system already flagged it as suspicious |
+
 #### Dispute Flow
 
 ```
 1. Agent A receives unfair feedback from Agent B
-2. Agent A files dispute + deposits 2 HBAR bond → POST /api/staking/dispute
+2. Agent A files dispute + deposits variable bond → POST /api/staking/dispute
+   - 2 HBAR (unvalidated), 4 HBAR (validated), free (outlier)
 3. System selects 3 arbiters deterministically: hash(disputeId + timestamp)
    - Neither disputer nor accused can be selected
    - Agents connected to either party are excluded (conflict of interest)
+   - Arbiter requirements: 10 HBAR stake + score ≥ 500 + 10 interactions
 4. Each arbiter receives ARBITRATION_REQUEST via HCS-10 inbound topic
 5. Arbiters vote within 48h → POST /api/staking/dispute/:id/vote { upheld: true/false }
    - Non-responsive arbiters rotated out + reliability penalty
 6. Majority wins (2/3):
-   - Upheld → 10% of Agent B's stake slashed, Agent A gets bond back
+   - Upheld → 10% of Agent B's stake slashed + validators who confirmed bad feedback penalized
    - Dismissed → Agent A loses bond (paid to Agent B as compensation)
 7. Arbiters rewarded from dispute bond regardless of outcome
 ```
+
+#### Validator Accountability
+
+When a dispute is **upheld**, validators who confirmed the bad feedback receive a reputation penalty. This creates a feedback loop: validators who consistently miss bad feedback lose their VERIFIED tier and become ineligible for future validation duties.
 
 #### Arbiter Accountability
 
@@ -431,14 +511,17 @@ Arbiters who consistently vote against the majority see their own reputation dec
 Bad decisions → minority votes → reputation drops → falls below 500 → loses arbiter eligibility
 ```
 
-**Example:**
+Arbiters are tracked by their **majority rate** — those who consistently end up in the minority lose eligibility.
+
+**Example (validated feedback dispute):**
 ```
 Agent B stake:     5.0 HBAR
-Dispute bond:      2.0 HBAR (paid by Agent A)
+Dispute bond:      4.0 HBAR (validated feedback, paid by Agent A)
 Dispute upheld:    10% slash
 Slashed:           0.5 HBAR
 Agent B remaining: 4.5 HBAR
-Agent A:           bond returned (2.0 HBAR)
+Agent A:           bond returned (4.0 HBAR)
+Validators:        reputation penalty for confirming bad feedback
 Arbiters:          share of dispute bond as reward
 ```
 
@@ -449,22 +532,25 @@ Arbiters:          share of dispute bond as reward
 **`AgentRepStaking.sol`** — deployed at **[`0.0.8278509`](https://hashscan.io/testnet/contract/0.0.8278509)** on Hedera Testnet · [Source Verified on Sourcify](https://repo.sourcify.dev/contracts/full_match/296/0x00000000000000000000000000000000007E1c27/)
 
 ```solidity
-// Deposit stake (payable, in tinybars)
+// ── Core Staking ──
 function stake(bytes32 agentId, uint256 lockDays) external payable
-
-// Withdraw stake after lock expires
 function unstake(bytes32 agentId) external
-
-// Slash stake — oracle only, max 30%
 function slash(bytes32 agentId, uint256 percent, string calldata reason) external
-
-// View current stake
 function getStake(bytes32 agentId) external view
     returns (uint256 amount, uint256 lockedUntil, uint256 totalSlashed, bool exists)
-
-// Protocol totals (TVL)
 function getTotals() external view
     returns (uint256 totalStaked, uint256 totalSlashed, uint256 stakerCount)
+
+// ── Arbiter Staking ──
+function stakeAsArbiter(bytes32 agentId, uint256 lockDays) external payable
+
+// ── Dispute Bonds ──
+function depositDisputeBond(bytes32 disputeId) external payable
+function returnDisputeBond(bytes32 disputeId) external
+function forfeitDisputeBond(bytes32 disputeId) external
+
+// ── Arbiter Rewards ──
+function rewardArbiter(bytes32 agentId) external payable
 ```
 
 | Constant | Value | Notes |
@@ -808,15 +894,14 @@ agent-rep/
 - Operating balance system with per-transaction fee deduction
 - HCS-10 registration fallback for network resilience
 
-### Phase 3 — DAO Governance _(Planned)_
+### Phase 3 — 3-Layer Defense & Decentralized Arbitration ✅
 
-Disputes will be resolved by a decentralized jury drawn from stakers, replacing the current single-arbiter model:
-
-- Randomly selected jury of 3–7 members, weighted by stake and tier
-- Sealed voting to prevent collusion — votes revealed only after all jurors commit
-- Juror rewards funded from slashed stakes (incentivize accurate rulings)
-- Juror accountability scoring — biased or lazy rulings reduce future selection probability
-- Governance token (AREP) for protocol parameter changes (slash rates, tier thresholds)
+- **Layer 1**: Automatic outlier detection — z-score analysis, feedback >1.5 std dev auto-discounted to 0.1x weight
+- **Layer 2**: System-selected validators — 2 per feedback, hash-based selection, 24h deadline, penalized if dispute upheld
+- **Layer 3**: Decentralized arbitration — 3 arbiters per dispute, variable bonds (2/4/free HBAR), 48h deadline, majority vote
+- Role hierarchy: Regular Agent → Validator (5 HBAR, score ≥ 200) → Arbiter (10 HBAR, score ≥ 500, 10+ interactions)
+- Smart Contract V2: `stakeAsArbiter`, `depositDisputeBond`, `returnDisputeBond`, `forfeitDisputeBond`, `rewardArbiter`
+- Validator accountability — validators penalized when they confirm feedback that is later overturned by arbitration
 
 ### Phase 4 — Tiered Staking Incentive Model _(Planned)_
 

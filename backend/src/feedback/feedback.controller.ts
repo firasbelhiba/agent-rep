@@ -318,7 +318,32 @@ export class FeedbackController {
     );
 
     const reputation = await this.reputationService.computeReputation(agentId);
-    return { feedback: saved, reputation, hcsSequenceNumber };
+
+    // Auto-select validators for this feedback (system-selected, not user-chosen)
+    let selectedValidators: string[] = [];
+    try {
+      selectedValidators = await this.stakingService.autoSelectValidatorsForFeedback(
+        saved.feedbackId,
+        fromAgentId,
+        agentId,
+      );
+      if (selectedValidators.length > 0) {
+        this.logger.log(`Auto-selected ${selectedValidators.length} validators for feedback ${saved.feedbackId}: ${selectedValidators.join(', ')}`);
+        // Notify validators via HCS-10 (fire and forget)
+        this.hcs10Service?.notifyValidators?.(selectedValidators, {
+          feedbackId: saved.feedbackId,
+          targetAgentId: agentId,
+          feedbackGiverId: fromAgentId,
+          value: Number(value),
+          tag1,
+          deadline: Date.now() + 24 * 60 * 60 * 1000, // 24 hours
+        }).catch((e: any) => this.logger.warn(`Failed to notify validators: ${e.message}`));
+      }
+    } catch (e: any) {
+      this.logger.warn(`Auto-validator selection failed: ${e.message}`);
+    }
+
+    return { feedback: saved, reputation, hcsSequenceNumber, selectedValidators };
   }
 
   /**

@@ -546,12 +546,11 @@ export default function ProfilePage() {
                   Cancel
                 </button>
                 <button
-                  disabled={arbiterLoading}
+                  disabled={arbiterLoading || Number(arbiterAmount) < 10}
                   onClick={async () => {
                     const agent = agents.find(a => a.agentId === arbiterAgent);
                     if (!agent?.apiKey) { setArbiterResult({ success: false, message: 'No API key found' }); return; }
                     const amount = Number(arbiterAmount);
-                    if (amount < 10) { setArbiterResult({ success: false, message: 'Minimum stake is 10 HBAR' }); return; }
                     setArbiterLoading(true);
                     try {
                       const res = await fetch(`${API_URL}/api/staking/arbiter/stake`, {
@@ -561,17 +560,21 @@ export default function ProfilePage() {
                       });
                       const data = await res.json();
                       if (!res.ok) throw new Error(data.message || 'Failed to stake');
-                      setArbiterResult({ success: true, message: `Arbiter stake deposited! Eligible: ${data.arbiterEligible}` });
-                      setTimeout(() => { setArbiterAgent(null); window.location.reload(); }, 2000);
+                      if (data.arbiterEligible) {
+                        setArbiterResult({ success: true, message: `Arbiter stake deposited! You are now eligible as an arbiter.` });
+                        setTimeout(() => { setArbiterAgent(null); window.location.reload(); }, 2500);
+                      } else {
+                        setArbiterResult({ success: true, message: `Stake of ${amount} HBAR deposited. You still need a Trusted tier (score ≥ 500) and 10+ interactions to become fully eligible.` });
+                      }
                     } catch (err: unknown) {
                       setArbiterResult({ success: false, message: err instanceof Error ? err.message : 'Unknown error' });
                     } finally {
                       setArbiterLoading(false);
                     }
                   }}
-                  className="flex-1 px-4 py-3 rounded-lg bg-[#8259ef] hover:bg-[#7048d6] text-white text-sm font-medium transition-colors disabled:opacity-50"
+                  className={`flex-1 px-4 py-3 rounded-lg text-sm font-medium transition-colors disabled:opacity-40 disabled:cursor-not-allowed ${Number(arbiterAmount) >= 10 ? 'bg-[#8259ef] hover:bg-[#7048d6] text-white' : 'bg-white/[0.06] text-[#9b9b9d]'}`}
                 >
-                  {arbiterLoading ? 'Staking...' : 'Confirm Stake'}
+                  {arbiterLoading ? 'Staking...' : Number(arbiterAmount) < 10 ? 'Below Minimum' : 'Confirm Stake'}
                 </button>
               </div>
             </div>

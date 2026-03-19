@@ -516,6 +516,59 @@ export class HCS10Service {
   }
 
   /**
+   * Notify selected validators about a new feedback that needs validation.
+   * Sends a VALIDATION_REQUEST message to each validator's inbound HCS-10 topic.
+   */
+  async notifyValidators(
+    validatorAgentIds: string[],
+    validationData: {
+      feedbackId: string;
+      targetAgentId: string;
+      feedbackGiverId: string;
+      value: number;
+      tag1: string;
+      deadline: number;
+    },
+  ): Promise<{ sent: string[]; failed: string[] }> {
+    const sent: string[] = [];
+    const failed: string[] = [];
+
+    for (const validatorId of validatorAgentIds) {
+      try {
+        // Look up the validator's inbound topic from the agent entity
+        const agentRepo = this.agentsService;
+        const agent = agentRepo ? await (agentRepo as any).findOne(validatorId) : null;
+        if (!agent?.inboundTopicId) {
+          this.logger.warn(`Validator ${validatorId} has no inbound topic`);
+          failed.push(validatorId);
+          continue;
+        }
+
+        const payload = JSON.stringify({
+          type: 'VALIDATION_REQUEST',
+          feedbackId: validationData.feedbackId,
+          targetAgentId: validationData.targetAgentId,
+          feedbackGiverId: validationData.feedbackGiverId,
+          value: validationData.value,
+          tag1: validationData.tag1,
+          deadline: new Date(validationData.deadline).toISOString(),
+          timestamp: Date.now(),
+        });
+
+        await this.sendMessage(agent.inboundTopicId, payload);
+        sent.push(validatorId);
+        this.logger.log(`Validation request sent to ${validatorId} on topic ${agent.inboundTopicId}`);
+      } catch (error: any) {
+        this.logger.error(`Failed to notify validator ${validatorId}: ${error.message}`);
+        failed.push(validatorId);
+      }
+    }
+
+    this.logger.log(`Validation notifications: ${sent.length} sent, ${failed.length} failed`);
+    return { sent, failed };
+  }
+
+  /**
    * Retrieve messages from a topic via mirror node.
    */
   async getTopicMessages(topicId: string, limit = 50): Promise<any[]> {

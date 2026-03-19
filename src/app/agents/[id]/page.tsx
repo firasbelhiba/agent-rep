@@ -61,6 +61,15 @@ export default function AgentDetailPage({
   const [reviewError, setReviewError] = useState<string | null>(null);
   const [reviewSuccess, setReviewSuccess] = useState(false);
 
+  // Dispute modal state
+  const [showDisputeModal, setShowDisputeModal] = useState(false);
+  const [disputeFeedbackId, setDisputeFeedbackId] = useState<string | null>(null);
+  const [disputeReason, setDisputeReason] = useState("");
+  const [disputeSubmitting, setDisputeSubmitting] = useState(false);
+  const [disputeError, setDisputeError] = useState<string | null>(null);
+  const [disputeSuccess, setDisputeSuccess] = useState<string | null>(null);
+  const [isOwner, setIsOwner] = useState(false);
+
   // Community auth state
   const [communityUser, setCommunityUser] = useState<{
     walletAddress: string;
@@ -79,6 +88,49 @@ export default function AgentDetailPage({
       }
     }
   }, []);
+
+  // Check if current user owns this agent
+  useEffect(() => {
+    if (agent) {
+      const walletAddress = localStorage.getItem("walletAddress");
+      if (walletAddress && agent.createdByWallet === walletAddress) {
+        setIsOwner(true);
+      }
+    }
+  }, [agent]);
+
+  const handleDispute = async () => {
+    if (!disputeFeedbackId || !disputeReason.trim()) return;
+    setDisputeSubmitting(true);
+    setDisputeError(null);
+    setDisputeSuccess(null);
+
+    try {
+      const res = await fetch(`${API_URL}/api/staking/dispute`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-Agent-Key": agent?.apiKey || "",
+        },
+        body: JSON.stringify({
+          feedbackId: disputeFeedbackId,
+          reason: disputeReason,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || "Failed to file dispute");
+
+      const bondHbar = (data.dispute?.bondAmount || 0) / 100_000_000;
+      setDisputeSuccess(`Dispute filed! Bond: ${bondHbar} HBAR. Status: ${data.dispute?.status || 'pending'}`);
+      setShowDisputeModal(false);
+      setDisputeReason("");
+      setDisputeFeedbackId(null);
+    } catch (err: any) {
+      setDisputeError(err.message);
+    } finally {
+      setDisputeSubmitting(false);
+    }
+  };
 
   const handleCommunityReview = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -322,6 +374,21 @@ export default function AgentDetailPage({
                                   <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
                                   HCS Proof
                                 </a>
+                              )}
+                              {isOwner && (
+                                <button
+                                  onClick={() => {
+                                    setDisputeFeedbackId(fb.feedbackId);
+                                    setDisputeError(null);
+                                    setDisputeSuccess(null);
+                                    setDisputeReason("");
+                                    setShowDisputeModal(true);
+                                  }}
+                                  className="text-red-400 hover:text-red-300 flex items-center gap-1 ml-auto"
+                                >
+                                  <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z" /></svg>
+                                  Dispute
+                                </button>
                               )}
                             </div>
                           </div>
@@ -829,6 +896,58 @@ export default function AgentDetailPage({
           </div>
         </div>
       </div>
+
+      {/* Dispute Modal */}
+      {showDisputeModal && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={() => setShowDisputeModal(false)}>
+          <div className="bg-[#0f0f23] border border-white/10 rounded-2xl p-6 w-full max-w-md" onClick={e => e.stopPropagation()}>
+            <h3 className="text-xl font-semibold text-white mb-2">Dispute Feedback</h3>
+            <p className="text-sm text-[#9b9b9d] mb-4">
+              File a dispute against this feedback. A variable bond will be charged based on validation status.
+            </p>
+
+            <div className="bg-white/[0.03] border border-white/[0.06] rounded-lg p-3 mb-4">
+              <p className="text-xs label-caps text-[#9b9b9d] mb-2">Bond Structure</p>
+              <div className="space-y-1 text-sm">
+                <div className="flex justify-between"><span className="text-[#9b9b9d]">Unvalidated feedback</span><span className="text-white">2 HBAR</span></div>
+                <div className="flex justify-between"><span className="text-[#9b9b9d]">Validated & confirmed</span><span className="text-amber-400">4 HBAR</span></div>
+                <div className="flex justify-between"><span className="text-[#9b9b9d]">Flagged as outlier</span><span className="text-emerald-400">Free</span></div>
+              </div>
+            </div>
+
+            <label className="block text-sm text-[#9b9b9d] mb-1">Reason for dispute</label>
+            <textarea
+              value={disputeReason}
+              onChange={e => setDisputeReason(e.target.value)}
+              placeholder="Explain why this feedback is unfair or fraudulent..."
+              className="w-full bg-white/[0.03] border border-white/10 rounded-lg px-4 py-3 text-white text-sm focus:outline-none focus:border-[#8259ef]/50 resize-none h-24 mb-4"
+            />
+
+            {disputeError && (
+              <div className="bg-red-950/50 border border-red-800 text-red-400 text-sm rounded-lg px-3 py-2 mb-4">{disputeError}</div>
+            )}
+            {disputeSuccess && (
+              <div className="bg-emerald-950/50 border border-emerald-800 text-emerald-400 text-sm rounded-lg px-3 py-2 mb-4">{disputeSuccess}</div>
+            )}
+
+            <div className="flex gap-3">
+              <button
+                onClick={() => setShowDisputeModal(false)}
+                className="flex-1 py-3 rounded-xl border border-white/10 text-white/60 hover:text-white hover:border-white/20 transition-colors text-sm"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleDispute}
+                disabled={disputeSubmitting || !disputeReason.trim()}
+                className="flex-1 py-3 rounded-xl bg-red-600 hover:bg-red-700 text-white text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              >
+                {disputeSubmitting ? "Filing..." : "File Dispute"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

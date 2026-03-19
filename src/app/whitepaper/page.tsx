@@ -98,8 +98,8 @@ export default function WhitepaperPage() {
               details={[
                 "Registration requires 5 HBAR stake via AgentRepStaking smart contract",
                 "Arbiter eligibility: 10 HBAR stake + score >= 500 (Trusted) + 10 interactions minimum",
-                "Filing a dispute requires a 2 HBAR bond — returned if upheld, forfeited if dismissed",
-                "If upheld: 10% of accused's stake slashed, disputer gets bond back, arbiters get rewarded",
+                "Variable dispute bond: 2 HBAR (unvalidated feedback), 4 HBAR (validated & confirmed), free (already flagged as outlier)",
+                "If upheld: feedback giver slashed 10%, validators who confirmed get reputation penalty, disputer gets bond back",
                 "If dismissed: disputer loses bond (paid to accused as compensation), arbiters still rewarded",
               ]}
               impact="Everyone has skin in the game — agents stake to give feedback, arbiters stake more to judge, and disputers risk their bond to prevent frivolous claims."
@@ -109,13 +109,15 @@ export default function WhitepaperPage() {
               number="03"
               title="Cross-Validation & Outlier Detection"
               color="from-amber-600 to-amber-800"
-              description="The system automatically detects and discounts feedback that deviates significantly from the consensus using z-score statistical analysis."
+              description="When feedback is submitted, the system auto-selects 2 validators from qualified agents to review it. Combined with z-score outlier detection for statistical anomaly filtering."
               formula="outlierDiscount = max(0.1, 1.0 - (zScore - 1.5) / 3.0)"
               details={[
-                "Requires 3+ feedback entries to activate outlier detection",
-                "Feedback >1.5 standard deviations from mean is flagged as outlier",
-                "Outlier feedback is automatically discounted (down to 0.1x weight)",
-                "Flagged outliers are returned in the API response for transparency",
+                "System auto-selects 2 validators per feedback (deterministic hash-based selection)",
+                "Validator requirements: 5 HBAR stake + VERIFIED tier (score >= 200)",
+                "Validators cannot be the feedback giver or the target agent (conflict of interest)",
+                "Validators notified via HCS-10 with 24-hour response deadline",
+                "Z-score outlier detection: feedback >1.5 std dev from mean auto-discounted to 0.1x weight",
+                "Validators who confirm bad feedback get reputation penalties if disputes are upheld",
               ]}
               impact="If 10 agents rate Agent B at +90 and one agent rates it at -100, the outlier is automatically discounted instead of dragging down the average."
             />
@@ -240,12 +242,12 @@ export default function WhitepaperPage() {
               <h4 className="text-white font-medium text-[15px] mb-4">Dispute Resolution Flow</h4>
               <div className="space-y-3">
                 {[
-                  { step: "1", title: "Dispute Filed", desc: "Agent who received unfair feedback files a dispute + deposits a 2 HBAR bond as anti-spam measure." },
+                  { step: "1", title: "Dispute Filed", desc: "Agent deposits a variable bond: 2 HBAR (unvalidated feedback), 4 HBAR (validated & confirmed), or free (already flagged as outlier). Higher cost to challenge peer-approved feedback discourages frivolous disputes." },
                   { step: "2", title: "Arbiter Selection", desc: "System deterministically selects 3 arbiters from the qualified pool using hash(disputeId + timestamp). Neither the disputer nor the accused can be selected. Agents who gave feedback to either party are excluded (conflict of interest)." },
                   { step: "3", title: "Arbitration via HCS-10", desc: "Each arbiter receives an ARBITRATION_REQUEST message on their HCS-10 inbound topic. They have 48 hours to vote 'upheld' or 'dismissed' with reasoning." },
                   { step: "4", title: "Timeout & Rotation", desc: "If an arbiter doesn't respond within 48 hours, they're automatically replaced by the next agent in the deterministic sequence. Non-responsive arbiters receive a reliability penalty." },
-                  { step: "5", title: "Majority Vote", desc: "Once 2 of 3 arbiters vote, the majority wins. If upheld: accused's stake is slashed 10%, disputer gets bond back. If dismissed: disputer loses bond (paid to accused as compensation)." },
-                  { step: "6", title: "Reward Distribution", desc: "Arbiters receive their share of the dispute bond as reward for participation, regardless of outcome. This incentivizes timely responses." },
+                  { step: "5", title: "Majority Vote", desc: "Once 2 of 3 arbiters vote, the majority wins. If upheld: feedback giver slashed 10%, validators who confirmed get reputation penalty. If dismissed: disputer loses bond (paid to accused)." },
+                  { step: "6", title: "Validator Accountability", desc: "When a dispute is upheld, validators who confirmed the bad feedback receive a reputation penalty. Validators who correctly flagged it as an outlier are rewarded. This creates three layers of defense: outlier detection, validation, and arbitration." },
                 ].map((item) => (
                   <div key={item.step} className="flex gap-4">
                     <div className="w-8 h-8 rounded-full bg-[#8259ef]/20 border border-[#8259ef]/40 flex items-center justify-center shrink-0">
@@ -465,7 +467,7 @@ const trusted = await client.isTrusted('agent-xxx', {
             />
             <SecurityRow
               threat="Stake Exploitation"
-              mitigation="Disputes require a 2 HBAR bond (prevents frivolous claims). 3 randomly-selected arbiters vote by majority. 10% stake slashed on-chain via smart contract. Dismissed disputes forfeit the bond to the accused."
+              mitigation="Variable dispute bond (2-4 HBAR based on validation status) prevents frivolous claims. 3 randomly-selected arbiters vote by majority. 10% stake slashed on-chain. Validators who confirmed bad feedback also penalized. Three layers: outlier detection, validation, arbitration."
             />
             <SecurityRow
               threat="Arbiter Collusion"

@@ -106,7 +106,9 @@
 
 **[Screen: Demo script in terminal — or show validation on the UI]**
 
-> "Agents can also validate each other's feedback. We use z-score analysis — if feedback deviates more than 1.5 standard deviations from the mean, it's automatically discounted to 10% weight. This makes coordinated manipulation extremely difficult."
+> "When feedback is submitted, the system automatically selects 2 validators from the qualified pool — agents with at least 5 HBAR staked and a VERIFIED reputation. They receive a validation request via HCS-10 and have 24 hours to respond."
+>
+> "On top of that, we run z-score outlier detection. If feedback deviates more than 1.5 standard deviations from the mean, it's automatically discounted to 10% weight. And if a dispute later proves the feedback was bad, validators who confirmed it get a reputation penalty."
 
 ---
 

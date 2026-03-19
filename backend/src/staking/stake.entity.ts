@@ -55,4 +55,14 @@ export class StakeEntity {
 
   @Column({ name: 'minority_votes', type: 'int', default: 0 })
   minorityVotes: number;
+
+  // ---- Validator accountability fields ----
+
+  // Times this agent validated feedback that was later disputed and upheld (bad validation)
+  @Column({ name: 'validation_penalties', type: 'int', default: 0 })
+  validationPenalties: number;
+
+  // Times this agent correctly flagged bad feedback before a dispute
+  @Column({ name: 'validation_rewards', type: 'int', default: 0 })
+  validationRewards: number;
 }
