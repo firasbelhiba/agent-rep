@@ -69,8 +69,6 @@ export default function AgentDetailPage({
   const [disputeSubmitting, setDisputeSubmitting] = useState(false);
   const [disputeError, setDisputeError] = useState<string | null>(null);
   const [disputeSuccess, setDisputeSuccess] = useState<string | null>(null);
-  const [validatingFeedbackId, setValidatingFeedbackId] = useState<string | null>(null);
-  const [validationResult, setValidationResult] = useState<Record<string, { type: 'success' | 'warning' | 'error'; message: string }>>({});
   const [isOwner, setIsOwner] = useState(false);
 
   // Community auth state
@@ -391,66 +389,6 @@ export default function AgentDetailPage({
                                   <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
                                   HCS Proof
                                 </a>
-                              )}
-                              {/* Validation status badge */}
-                              <span className={`px-1.5 py-0.5 text-xs rounded border ${
-                                fb.validationStatus === 'validated' ? 'bg-emerald-950 text-emerald-400 border-emerald-800' :
-                                fb.validationStatus === 'pending_validation' ? 'bg-yellow-950 text-yellow-400 border-yellow-800' :
-                                fb.validationStatus === 'no_validators' ? 'bg-orange-950 text-orange-400 border-orange-800' :
-                                'bg-white/[0.03] text-[#9b9b9d] border-white/10'
-                              }`}>
-                                {fb.validationStatus === 'validated' ? 'Validated' :
-                                 fb.validationStatus === 'pending_validation' ? 'Pending Validation' :
-                                 fb.validationStatus === 'no_validators' ? 'No Validators' :
-                                 'Unvalidated'}
-                              </span>
-                              {/* Request Validation button — shown for unvalidated/no_validators feedback */}
-                              {(fb.validationStatus === 'unvalidated' || fb.validationStatus === 'no_validators' || !fb.validationStatus) && (
-                                validatingFeedbackId === fb.feedbackId ? (
-                                  <span className="text-[#b47aff] flex items-center gap-1 animate-pulse">
-                                    <svg className="w-3 h-3 animate-spin" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
-                                    Requesting...
-                                  </span>
-                                ) : (
-                                  <button
-                                    onClick={async () => {
-                                      setValidatingFeedbackId(fb.feedbackId);
-                                      setValidationResult(prev => ({ ...prev, [fb.feedbackId]: undefined as any }));
-                                      try {
-                                        const res = await fetch(`${API_URL}/api/feedback/${fb.feedbackId}/request-validation`, {
-                                          method: 'POST',
-                                          headers: { 'Content-Type': 'application/json', 'X-Agent-Key': agent?.apiKey || '' },
-                                        });
-                                        const data = await res.json();
-                                        if (data.status === 'validators_assigned') {
-                                          setValidationResult(prev => ({ ...prev, [fb.feedbackId]: { type: 'success', message: `${data.validators.length} validator(s) assigned! 24h deadline.` } }));
-                                        } else if (data.status === 'no_validators') {
-                                          setValidationResult(prev => ({ ...prev, [fb.feedbackId]: { type: 'warning', message: data.message || 'No qualified validators available yet.' } }));
-                                        } else if (data.status === 'pending') {
-                                          setValidationResult(prev => ({ ...prev, [fb.feedbackId]: { type: 'warning', message: 'Validation already in progress. Validators have 24h to respond.' } }));
-                                        } else {
-                                          setValidationResult(prev => ({ ...prev, [fb.feedbackId]: { type: 'success', message: data.message || 'Validation requested.' } }));
-                                        }
-                                      } catch {
-                                        setValidationResult(prev => ({ ...prev, [fb.feedbackId]: { type: 'error', message: 'Failed to request validation.' } }));
-                                      }
-                                      setValidatingFeedbackId(null);
-                                    }}
-                                    className="text-[#b47aff] hover:text-white flex items-center gap-1"
-                                  >
-                                    <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                                    Request Validation
-                                  </button>
-                                )
-                              )}
-                              {validationResult[fb.feedbackId] && (
-                                <span className={`text-xs px-2 py-0.5 rounded ${
-                                  validationResult[fb.feedbackId].type === 'success' ? 'text-emerald-400 bg-emerald-950 border border-emerald-800' :
-                                  validationResult[fb.feedbackId].type === 'warning' ? 'text-yellow-400 bg-yellow-950 border border-yellow-800' :
-                                  'text-red-400 bg-red-950 border border-red-800'
-                                }`}>
-                                  {validationResult[fb.feedbackId].message}
-                                </span>
                               )}
                               {isOwner && (
                                 <button

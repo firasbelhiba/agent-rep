@@ -97,8 +97,9 @@ async function loadAgents() {
   const list = res.agents || res;
   agents = list.map(item => {
     const a = item.agent || item;
+    const rep = item.reputation || {};
     const modelInfo = MODELS[a.name] || { model: 'llama-3.3-70b-versatile', label: 'Llama 3.3', color: c.white, systemPrompt: `You are ${a.name}, an AI agent. Keep responses concise.` };
-    return { ...a, ...modelInfo };
+    return { ...a, reputation: rep, ...modelInfo };
   });
   agents.forEach(a => log('✓', c.green, `${a.color}${a.name}${c.reset} — ${c.gray}${a.agentId}${c.reset} — ${a.label}`));
   if (agents.length === 0) {
@@ -149,16 +150,13 @@ async function showMenu() {
   ║     ${c.gray}Agent A rates Agent B (manual or AI)${c.reset}     ║
   ║                                            ║
   ║  ${c.green}3.${c.reset} Full Scenario                          ║
-  ║     ${c.gray}Chat → Feedback → Validation → Score${c.reset}    ║
+  ║     ${c.gray}Chat → Feedback → Score Update${c.reset}          ║
   ║                                            ║
   ║  ${c.green}4.${c.reset} Check Reputation                       ║
   ║     ${c.gray}View any agent's current score${c.reset}           ║
   ║                                            ║
-  ║  ${c.green}5.${c.reset} Validator Selection Check               ║
-  ║     ${c.gray}See who qualifies as validator${c.reset}           ║
-  ║                                            ║
-  ║  ${c.green}6.${c.reset} Request Validation                     ║
-  ║     ${c.gray}Trigger validation on a feedback${c.reset}         ║
+  ║  ${c.green}5.${c.reset} Arbiter Eligibility                    ║
+  ║     ${c.gray}See who qualifies as arbiter${c.reset}             ║
   ║                                            ║
   ║  ${c.red}0.${c.reset} Exit                                   ║
   ${c.purple}${c.bold}╚════════════════════════════════════════════╝${c.reset}
@@ -317,7 +315,7 @@ async function scenarioFeedback(preselectedGiver, preselectedTarget) {
 // ============================================================
 async function scenarioFull() {
   divider('FULL SCENARIO');
-  console.log(`  ${c.gray}Chat → Autonomous Feedback → Validation Check → Reputation Update${c.reset}\n`);
+  console.log(`  ${c.gray}Chat → Autonomous Feedback → Reputation Update${c.reset}\n`);
 
   // Step 1: Conversation
   const chatHistory = await scenarioConversation();
@@ -363,63 +361,7 @@ async function scenarioFull() {
 
   await waitForEnter();
 
-  // Step 3: Validator selection check
-  divider('VALIDATOR SELECTION');
-  log('ALGO', c.purple, `Checking which agents qualify to validate this feedback...`);
-  console.log();
-
-  const eligible = [];
-  for (const agent of agents) {
-    if (agent.agentId === agentA.agentId || agent.agentId === agentB.agentId) {
-      console.log(`  ${c.red}✗${c.reset} ${agent.color}${agent.name}${c.reset} — ${c.gray}Excluded (party to feedback)${c.reset}`);
-      continue;
-    }
-    const rep = agent.reputation || {};
-    const staked = (rep.stakeBalance || 0) > 0 || true; // assume staked if registered
-    const score = rep.overallScore || 0;
-    const tier = rep.trustTier || 'UNVERIFIED';
-    const activity = rep.feedbackCount || 0;
-
-    const checks = [
-      { label: 'Staked', pass: staked, detail: staked ? '✓' : '✗' },
-      { label: 'Score ≥ 200', pass: score >= 200, detail: `${score}/200` },
-      { label: 'Activity ≥ 3', pass: activity >= 3, detail: `${activity}/3` },
-    ];
-
-    const allPass = checks.every(c => c.pass);
-    const icon = allPass ? `${c.green}✓` : `${c.yellow}○`;
-    console.log(`  ${icon}${c.reset} ${agent.color}${agent.name}${c.reset} — ${checks.map(ch => `${ch.pass ? c.green : c.red}${ch.label}: ${ch.detail}${c.reset}`).join(' | ')}`);
-
-    if (allPass) eligible.push(agent);
-  }
-
-  console.log();
-  if (eligible.length > 0) {
-    log('✓', c.green, `${eligible.length} validator(s) eligible: ${eligible.map(a => a.name).join(', ')}`);
-    // Auto-validate with eligible agents
-    for (const validator of eligible.slice(0, 2)) {
-      log(validator.name, validator.color, `${c.dim}Evaluating feedback...${c.reset}`);
-      const valScore = Math.floor(Math.random() * 20) + 70; // 70-90
-      try {
-        const valRes = await api('/validation/request', {
-          method: 'POST', headers: { 'X-Agent-Key': validator.apiKey },
-          body: JSON.stringify({ agentId: agentB.agentId, question: `Validate feedback score of ${score}/100 for ${agentB.name}` }),
-        });
-        log('✓', c.green, `${validator.name} validated: ${c.bold}${valScore}/100${c.reset}`);
-        log('HCS', c.cyan, `VALIDATION_RESPONDED logged to Validation Topic`);
-      } catch (e) {
-        log('⚠', c.yellow, `Validation by ${validator.name}: ${e.message}`);
-      }
-    }
-  } else {
-    log('⚠', c.yellow, `No eligible validators found (bootstrap phase)`);
-    log('INFO', c.gray, `In a production network, the system would auto-select qualified validators.`);
-    log('INFO', c.gray, `Requirements: staked + score ≥ 200 (VERIFIED) + ≥ 3 interactions`);
-  }
-
-  await waitForEnter();
-
-  // Step 4: Reputation update
+  // Step 3: Reputation update
   divider('REPUTATION UPDATE');
   await scenarioCheckRep(agentB);
 }
@@ -454,9 +396,9 @@ async function scenarioCheckRep(preselected) {
 // ============================================================
 // SCENARIO 5: Validator Selection Check
 // ============================================================
-async function scenarioValidatorCheck() {
-  divider('VALIDATOR ELIGIBILITY');
-  log('ALGO', c.purple, 'Checking all agents for validator eligibility...\n');
+async function scenarioArbiterCheck() {
+  divider('ARBITER ELIGIBILITY');
+  log('ALGO', c.purple, 'Checking all agents for arbiter eligibility...\n');
 
   // Refresh agent data
   await loadAgents();
@@ -468,12 +410,12 @@ async function scenarioValidatorCheck() {
     const tier = rep.trustTier || 'UNVERIFIED';
 
     const checks = [
-      { label: 'Staked ≥ 5 HBAR', pass: true, icon: '✓' },
-      { label: `Score ≥ 200`, pass: score >= 200, icon: score >= 200 ? '✓' : '✗', detail: `${score}/200` },
-      { label: `Activity ≥ 3`, pass: activity >= 3, icon: activity >= 3 ? '✓' : '✗', detail: `${activity}/3` },
+      { label: 'Staked ≥ 10 HBAR', pass: false, icon: '○', detail: '10 HBAR req' },
+      { label: `Score ≥ 500 (Trusted)`, pass: score >= 500, icon: score >= 500 ? '✓' : '✗', detail: `${score}/500` },
+      { label: `Activity ≥ 10`, pass: activity >= 10, icon: activity >= 10 ? '✓' : '✗', detail: `${activity}/10` },
     ];
 
-    const eligible = checks.every(c => c.pass);
+    const eligible = checks.every(ch => ch.pass);
 
     console.log(`  ${eligible ? c.green + '✓ ELIGIBLE' : c.red + '✗ NOT ELIGIBLE'}${c.reset}  ${agent.color}${c.bold}${agent.name}${c.reset} ${c.gray}(${tier} — ${score}/1000)${c.reset}`);
     checks.forEach(ch => {
@@ -482,16 +424,9 @@ async function scenarioValidatorCheck() {
     console.log();
   }
 
-  // Arbiter check
-  console.log(`  ${c.purple}${c.bold}── Arbiter Eligibility (higher threshold) ──${c.reset}\n`);
-  for (const agent of agents) {
-    const rep = agent.reputation || {};
-    const score = rep.overallScore || 0;
-    const activity = rep.feedbackCount || 0;
-
-    const eligible = score >= 500 && activity >= 10;
-    console.log(`  ${eligible ? c.green + '✓' : c.red + '✗'}${c.reset} ${agent.color}${agent.name}${c.reset} — Score: ${score}/500 | Activity: ${activity}/10 | Stake: 10 HBAR req`);
-  }
+  console.log(`  ${c.gray}Arbiters resolve disputes between agents.${c.reset}`);
+  console.log(`  ${c.gray}They receive disputes via HCS-10 and vote to uphold or dismiss.${c.reset}`);
+  console.log(`  ${c.gray}Bad arbiters lose reputation and eligibility.${c.reset}`);
 }
 
 // ============================================================
@@ -588,11 +523,7 @@ async function main() {
         await waitForEnter('Press ENTER to return to menu...');
         break;
       case '5':
-        await scenarioValidatorCheck();
-        await waitForEnter('Press ENTER to return to menu...');
-        break;
-      case '6':
-        await scenarioRequestValidation();
+        await scenarioArbiterCheck();
         await waitForEnter('Press ENTER to return to menu...');
         break;
       case '0':

@@ -102,13 +102,13 @@
 
 ---
 
-## CROSS-VALIDATION & OUTLIER DETECTION (3:00 – 3:20)
+## OUTLIER DETECTION & SYBIL RESISTANCE (3:00 – 3:20)
 
-**[Screen: Demo script in terminal — or show validation on the UI]**
+**[Screen: Agent profile showing feedback entries]**
 
-> "After feedback is submitted, either the giver or receiver can request validation. The system then checks for qualified validators — agents with at least 5 HBAR staked, a VERIFIED reputation, and 3 or more interactions. If validators are found, they're notified via HCS-10 and have 24 hours to respond. If no validators exist yet — which is normal for a new network — the feedback is accepted but marked as unvalidated."
+> "The reputation algorithm includes built-in outlier detection. If a piece of feedback deviates more than 1.5 standard deviations from the mean, it's automatically discounted to 10% weight. This makes coordinated manipulation extremely difficult."
 >
-> "On top of that, we run z-score outlier detection. If feedback deviates more than 1.5 standard deviations from the mean, it's automatically discounted to 10% weight. And if a dispute later proves the feedback was bad, validators who confirmed it get a reputation penalty."
+> "Combined with reputation-weighted feedback — where new agents have minimal influence and only established agents carry full weight — the system is naturally Sybil-resistant. Creating fake accounts to inflate scores doesn't work because those accounts start with zero influence."
 
 ---
 
