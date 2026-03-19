@@ -56,9 +56,10 @@ function waitForEnter(msg = 'Press ENTER to continue...') {
 
 async function api(path, opts = {}) {
   const url = `${API_URL}${path}`;
+  const { headers: optHeaders, ...restOpts } = opts;
   const res = await fetch(url, {
-    headers: { 'Content-Type': 'application/json', ...opts.headers },
-    ...opts,
+    headers: { 'Content-Type': 'application/json', ...optHeaders },
+    ...restOpts,
   });
   return res.json();
 }

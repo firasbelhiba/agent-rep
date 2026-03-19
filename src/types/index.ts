@@ -49,6 +49,9 @@ export interface Feedback {
   isRevoked: boolean;
   timestamp: number;
   hcsSequenceNumber?: string;
+  validationStatus?: 'unvalidated' | 'pending_validation' | 'validated' | 'no_validators';
+  assignedValidators?: string[];
+  validationRequestedAt?: number;
 }
 
 // Validation (ERC-8004 Validation Registry equivalent)
