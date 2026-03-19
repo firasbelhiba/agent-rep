@@ -138,15 +138,30 @@ export class StakingService {
 
   // ---- Arbiter Methods ----
 
-  async stakeAsArbiter(agentId: string, amount: number): Promise<StakeEntity> {
+  async saveStake(stake: StakeEntity): Promise<StakeEntity> {
+    return this.stakeRepo.save(stake);
+  }
+
+  async stakeAsArbiter(agentId: string, amount: number): Promise<{ stake: StakeEntity; txId?: string }> {
     if (amount < MIN_ARBITER_STAKE) {
       throw new Error(`Minimum arbiter stake is ${MIN_ARBITER_STAKE / 100_000_000} HBAR`);
     }
+
+    let txId: string | undefined;
+
+    // Execute on smart contract if available
+    if (this.stakingContract.isConfigured()) {
+      txId = await this.stakingContract.stakeAsArbiter(agentId, amount);
+      this.logger.log(`On-chain arbiter stake tx: ${txId}`);
+    }
+
+    // Update DB
     const stake = await this.getStake(agentId);
     stake.arbiterStake = Number(stake.arbiterStake || 0) + amount;
+    if (txId) stake.contractTxId = txId;
     await this.stakeRepo.save(stake);
     await this.checkAndUpdateArbiterEligibility(agentId);
-    return stake;
+    return { stake, txId };
   }
 
   async checkAndUpdateArbiterEligibility(agentId: string, reputationScore?: number, activityCount?: number): Promise<boolean> {

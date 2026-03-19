@@ -546,25 +546,36 @@ export default function ProfilePage() {
                   Cancel
                 </button>
                 <button
-                  disabled={arbiterLoading || Number(arbiterAmount) < 10}
+                  disabled={arbiterLoading || Number(arbiterAmount) < 10 || !wallet.isConnected}
                   onClick={async () => {
                     const agent = agents.find(a => a.agentId === arbiterAgent);
                     if (!agent?.apiKey) { setArbiterResult({ success: false, message: 'No API key found' }); return; }
+                    if (!wallet.isConnected) { setArbiterResult({ success: false, message: 'Wallet not connected' }); return; }
                     const amount = Number(arbiterAmount);
                     setArbiterLoading(true);
                     try {
-                      const res = await fetch(`${API_URL}/api/staking/arbiter/stake`, {
+                      // Step 1: Call smart contract stakeAsArbiter() via wallet
+                      const STAKING_CONTRACT_ID = process.env.NEXT_PUBLIC_STAKING_CONTRACT_ID || '0.0.8289113';
+                      const txResult = await wallet.executeContractCall(
+                        STAKING_CONTRACT_ID,
+                        'stakeAsArbiter',
+                        new Uint8Array(0),
+                        amount
+                      );
+                      if (!txResult) throw new Error('Transaction rejected by wallet');
+
+                      // Step 2: Record in backend DB (contract already called by wallet above)
+                      await fetch(`${API_URL}/api/staking/arbiter/record`, {
                         method: 'POST',
-                        headers: { 'Content-Type': 'application/json', 'x-api-key': agent.apiKey },
-                        body: JSON.stringify({ amount }),
+                        headers: { 'Content-Type': 'application/json', 'X-Agent-Key': agent.apiKey },
+                        body: JSON.stringify({ amount, txId: txResult.transactionId }),
                       });
-                      const data = await res.json();
-                      if (!res.ok) throw new Error(data.message || 'Failed to stake');
+                      const data = await fetch(`${API_URL}/api/staking/arbiter/eligibility/${agent.agentId}`).then(r => r.json());
                       if (data.arbiterEligible) {
-                        setArbiterResult({ success: true, message: `Arbiter stake deposited! You are now eligible as an arbiter.` });
+                        setArbiterResult({ success: true, message: `Arbiter stake of ${amount} HBAR deposited on smart contract! TX: ${txResult.transactionId}` });
                         setTimeout(() => { setArbiterAgent(null); window.location.reload(); }, 2500);
                       } else {
-                        setArbiterResult({ success: true, message: `Stake of ${amount} HBAR deposited. You still need a Trusted tier (score ≥ 500) and 10+ interactions to become fully eligible.` });
+                        setArbiterResult({ success: true, message: `${amount} HBAR staked on-chain (TX: ${txResult.transactionId}). You still need Trusted tier (score ≥ 500) and 10+ interactions.` });
                       }
                     } catch (err: unknown) {
                       setArbiterResult({ success: false, message: err instanceof Error ? err.message : 'Unknown error' });

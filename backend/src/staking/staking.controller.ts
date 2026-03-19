@@ -396,14 +396,41 @@ export class StakingController {
     try {
       const agent = await this.authenticateAgent(apiKey);
       const amountTinybar = Math.round(body.amount * 100_000_000);
-      const stake = await this.stakingService.stakeAsArbiter(agent.agentId, amountTinybar);
+      const { stake, txId } = await this.stakingService.stakeAsArbiter(agent.agentId, amountTinybar);
       return {
         message: 'Arbiter stake deposited',
         arbiterEligible: stake.arbiterEligible,
         arbiterStake: Number(stake.arbiterStake) / 100_000_000,
         totalStake: (Number(stake.balance) + Number(stake.arbiterStake)) / 100_000_000,
+        txId,
+        onChain: !!txId,
       };
     } catch (e) {
+      throw new HttpException(e.message, HttpStatus.BAD_REQUEST);
+    }
+  }
+
+  /** Record arbiter stake in DB after user already called contract via wallet */
+  @Post('arbiter/record')
+  async recordArbiterStake(
+    @Headers('x-agent-key') apiKey: string,
+    @Body() body: { amount: number; txId: string },
+  ) {
+    try {
+      const agent = await this.authenticateAgent(apiKey);
+      const amountTinybar = Math.round(body.amount * 100_000_000);
+      const stake = await this.stakingService.getStake(agent.agentId);
+      stake.arbiterStake = Number(stake.arbiterStake || 0) + amountTinybar;
+      stake.contractTxId = body.txId;
+      await this.stakingService.saveStake(stake);
+      await this.stakingService.checkAndUpdateArbiterEligibility(agent.agentId);
+      return {
+        message: 'Arbiter stake recorded',
+        arbiterEligible: stake.arbiterEligible,
+        txId: body.txId,
+        onChain: true,
+      };
+    } catch (e: any) {
       throw new HttpException(e.message, HttpStatus.BAD_REQUEST);
     }
   }

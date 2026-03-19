@@ -73,6 +73,33 @@ export class StakingContractService {
   }
 
   /**
+   * Stake as arbiter — additional HBAR stake for arbiter eligibility.
+   */
+  async stakeAsArbiter(agentId: string, amountTinybar: number): Promise<string> {
+    const client = this.hederaConfig.getClient();
+    const contractId = this.getContractId();
+    const agentBytes = this.agentIdToBytes32(agentId);
+
+    this.logger.log(`Arbiter staking ${amountTinybar} tinybars for agent ${agentId}`);
+
+    const tx = new ContractExecuteTransaction()
+      .setContractId(contractId)
+      .setGas(200000)
+      .setPayableAmount(Hbar.fromTinybars(amountTinybar))
+      .setFunction(
+        'stakeAsArbiter',
+        new ContractFunctionParameters().addBytes32(agentBytes),
+      );
+
+    const response = await tx.execute(client);
+    const receipt = await response.getReceipt(client);
+    const txId = response.transactionId.toString();
+
+    this.logger.log(`Arbiter stake tx: ${txId}, status: ${receipt.status}`);
+    return txId;
+  }
+
+  /**
    * Unstake — withdraw HBAR after lock period. Funds return to operator wallet.
    */
   async unstake(agentId: string): Promise<string> {

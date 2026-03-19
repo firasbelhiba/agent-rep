@@ -17,6 +17,7 @@ interface UseWalletReturn extends WalletState {
   disconnect: () => Promise<void>;
   signMessage: (message: string) => Promise<{ signature: Uint8Array; publicKey: string } | null>;
   sendHbar: (toAccountId: string, amountHbar: number) => Promise<{ transactionId: string } | null>;
+  executeContractCall: (contractId: string, functionName: string, params: Uint8Array, amountHbar: number) => Promise<{ transactionId: string } | null>;
   isLoading: boolean;
   isInitialized: boolean;
 }
@@ -273,12 +274,52 @@ export function useWallet(): UseWalletReturn {
     [state.accountId]
   );
 
+  const executeContractCall = useCallback(
+    async (contractId: string, functionName: string, params: Uint8Array, amountHbar: number): Promise<{ transactionId: string } | null> => {
+      try {
+        const hc = hcRef.current;
+        if (!hc || !state.accountId) {
+          throw new Error("Wallet not connected");
+        }
+
+        const { AccountId, ContractExecuteTransaction, Hbar, HbarUnit, TransactionId, ContractId } = await import("@hashgraph/sdk");
+        const fromAccount = AccountId.fromString(state.accountId);
+
+        const transaction = new ContractExecuteTransaction()
+          .setContractId(ContractId.fromString(contractId))
+          .setGas(300000)
+          .setFunction(functionName, params.length > 0 ? params : undefined)
+          .setPayableAmount(Hbar.from(amountHbar, HbarUnit.Hbar))
+          .setTransactionId(TransactionId.generate(fromAccount));
+
+        transaction.setNodeAccountIds([AccountId.fromString("0.0.3")]);
+        transaction.freeze();
+
+        console.log(`[HashConnect] Executing contract call: ${functionName} on ${contractId} with ${amountHbar} HBAR`);
+        const receipt = await hc.sendTransaction(fromAccount, transaction);
+        console.log("[HashConnect] Contract call receipt:", receipt);
+
+        const txId = transaction.transactionId?.toString() || "";
+        return { transactionId: txId };
+      } catch (err: unknown) {
+        console.error("[HashConnect] Contract call error:", err);
+        setState((prev) => ({
+          ...prev,
+          error: err instanceof Error ? err.message : "Contract call failed",
+        }));
+        return null;
+      }
+    },
+    [state.accountId]
+  );
+
   return {
     ...state,
     connect,
     disconnect,
     signMessage,
     sendHbar,
+    executeContractCall,
     isLoading,
     isInitialized,
   };
