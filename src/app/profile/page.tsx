@@ -559,7 +559,8 @@ export default function ProfilePage() {
                       const txResult = await wallet.executeContractCall(
                         STAKING_CONTRACT_ID,
                         'stakeAsArbiter',
-                        amount
+                        amount,
+                        agent.agentId
                       );
                       if (!txResult) throw new Error('Transaction rejected by wallet');
 

@@ -17,7 +17,7 @@ interface UseWalletReturn extends WalletState {
   disconnect: () => Promise<void>;
   signMessage: (message: string) => Promise<{ signature: Uint8Array; publicKey: string } | null>;
   sendHbar: (toAccountId: string, amountHbar: number) => Promise<{ transactionId: string } | null>;
-  executeContractCall: (contractId: string, functionName: string, amountHbar: number) => Promise<{ transactionId: string } | null>;
+  executeContractCall: (contractId: string, functionName: string, amountHbar: number, agentId?: string) => Promise<{ transactionId: string } | null>;
   isLoading: boolean;
   isInitialized: boolean;
 }
@@ -275,7 +275,7 @@ export function useWallet(): UseWalletReturn {
   );
 
   const executeContractCall = useCallback(
-    async (contractId: string, functionName: string, amountHbar: number): Promise<{ transactionId: string } | null> => {
+    async (contractId: string, functionName: string, amountHbar: number, agentId?: string): Promise<{ transactionId: string } | null> => {
       try {
         const hc = hcRef.current;
         if (!hc || !state.accountId) {
@@ -285,10 +285,21 @@ export function useWallet(): UseWalletReturn {
         const { AccountId, ContractExecuteTransaction, ContractFunctionParameters, Hbar, HbarUnit, TransactionId, ContractId } = await import("@hashgraph/sdk");
         const fromAccount = AccountId.fromString(state.accountId);
 
+        // Build function parameters — hash agentId to bytes32 if provided
+        const params = new ContractFunctionParameters();
+        if (agentId) {
+          // Hash agentId to bytes32 (SHA-256) — must match backend's agentIdToBytes32()
+          const encoder = new TextEncoder();
+          const data = encoder.encode(agentId);
+          const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+          const hashArray = new Uint8Array(hashBuffer);
+          params.addBytes32(hashArray);
+        }
+
         const transaction = new ContractExecuteTransaction()
           .setContractId(ContractId.fromString(contractId))
           .setGas(300000)
-          .setFunction(functionName, new ContractFunctionParameters())
+          .setFunction(functionName, params)
           .setPayableAmount(Hbar.from(amountHbar, HbarUnit.Hbar))
           .setTransactionId(TransactionId.generate(fromAccount));
 
