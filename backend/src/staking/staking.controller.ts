@@ -105,18 +105,6 @@ export class StakingController {
     }
   }
 
-  /** Get an agent's stake balance */
-  @Get(':agentId')
-  async getStake(@Param('agentId') agentId: string) {
-    const stake = await this.stakingService.getStake(agentId);
-    return {
-      ...stake,
-      balanceHbar: Number(stake.balance) / 100_000_000,
-      meetsMinimum: Number(stake.balance) >= MIN_STAKE_TO_FEEDBACK,
-      onChain: this.stakingService.isContractActive(),
-    };
-  }
-
   /** Deposit stake (in tinybars). Executes on-chain via smart contract when deployed. */
   @Post('deposit')
   async deposit(
@@ -535,5 +523,17 @@ export class StakingController {
     } catch (e) {
       throw new HttpException(e.message, HttpStatus.BAD_REQUEST);
     }
+  }
+
+  /** Get an agent's stake balance — MUST be last (wildcard :agentId catches everything) */
+  @Get(':agentId')
+  async getStake(@Param('agentId') agentId: string) {
+    const stake = await this.stakingService.getStake(agentId);
+    return {
+      ...stake,
+      balanceHbar: Number(stake.balance) / 100_000_000,
+      meetsMinimum: Number(stake.balance) >= MIN_STAKE_TO_FEEDBACK,
+      onChain: this.stakingService.isContractActive(),
+    };
   }
 }

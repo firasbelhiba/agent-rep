@@ -485,37 +485,25 @@ export default function ProfilePage() {
             </p>
 
             <div className="space-y-5">
-              {/* Stake Slider */}
+              {/* Stake Amount Input */}
               <div>
-                <div className="flex items-center justify-between mb-3">
-                  <label className="text-xs text-[#9b9b9d] uppercase tracking-wider">Stake Amount</label>
-                  <span className="text-2xl font-light text-white">{arbiterAmount} <span className="text-sm text-[#9b9b9d]">HBAR</span></span>
-                </div>
-                <div className="relative">
+                <label className="text-xs text-[#9b9b9d] uppercase tracking-wider block mb-2">Stake Amount</label>
+                <div className="flex items-center gap-3">
                   <input
-                    type="range"
-                    min={5}
-                    max={50}
+                    type="number"
+                    min={10}
+                    max={100}
                     step={1}
                     value={arbiterAmount}
                     onChange={(e) => setArbiterAmount(e.target.value)}
-                    className="w-full h-2 rounded-full appearance-none cursor-pointer"
-                    style={{
-                      background: `linear-gradient(to right, ${Number(arbiterAmount) >= 10 ? '#8259ef' : '#ef4444'} 0%, ${Number(arbiterAmount) >= 10 ? '#8259ef' : '#ef4444'} ${((Number(arbiterAmount) - 5) / 45) * 100}%, #1a1a2e ${((Number(arbiterAmount) - 5) / 45) * 100}%, #1a1a2e 100%)`,
-                    }}
+                    className="flex-1 px-4 py-3 rounded-lg bg-white/5 border border-white/10 text-white text-lg font-medium focus:border-[#8259ef] outline-none transition-colors"
+                    placeholder="10"
                   />
-                  {/* Threshold marker at 10 HBAR */}
-                  <div className="absolute top-4 mt-1" style={{ left: `${((10 - 5) / 45) * 100}%`, transform: 'translateX(-50%)' }}>
-                    <div className="w-px h-3 bg-[#00d47e] mx-auto" />
-                    <span className="text-[10px] text-[#00d47e] whitespace-nowrap">Min 10</span>
-                  </div>
+                  <span className="text-[#9b9b9d] text-sm">HBAR</span>
                 </div>
-                <div className="flex justify-between mt-6 text-[10px] text-[#9b9b9d]">
-                  <span>5 HBAR</span>
-                  <span>50 HBAR</span>
-                </div>
-                {Number(arbiterAmount) < 10 && (
-                  <p className="text-xs text-red-400 mt-1">Below minimum threshold — need at least 10 HBAR</p>
+                <p className="text-xs text-[#9b9b9d] mt-2">Minimum: 10 HBAR</p>
+                {Number(arbiterAmount) < 10 && Number(arbiterAmount) > 0 && (
+                  <p className="text-xs text-red-400 mt-1">Below minimum — need at least 10 HBAR</p>
                 )}
               </div>
 

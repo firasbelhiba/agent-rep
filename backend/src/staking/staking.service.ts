@@ -212,8 +212,38 @@ export class StakingService {
   }
 
   async getEligibleArbiters(excludeAgentIds: string[] = []): Promise<StakeEntity[]> {
-    const allStakes = await this.stakeRepo.find({ where: { arbiterEligible: true } });
-    return allStakes.filter(s => !excludeAgentIds.includes(s.agentId));
+    // Get all stakes and check arbiter eligibility from contract
+    const allStakes = await this.stakeRepo.find();
+    const eligible: StakeEntity[] = [];
+
+    for (const stake of allStakes) {
+      if (excludeAgentIds.includes(stake.agentId)) continue;
+
+      // Check DB flag first
+      if (stake.arbiterEligible) {
+        eligible.push(stake);
+        continue;
+      }
+
+      // If DB flag is false, check contract — maybe it wasn't synced
+      if (this.stakingContract.isConfigured()) {
+        try {
+          const arbiterStake = await this.stakingContract.getArbiterStake(stake.agentId);
+          if (arbiterStake >= MIN_ARBITER_STAKE) {
+            // Sync DB
+            stake.arbiterStake = arbiterStake;
+            stake.arbiterEligible = true;
+            await this.stakeRepo.save(stake);
+            eligible.push(stake);
+            this.logger.log(`Synced arbiter eligibility for ${stake.agentId} from contract (${arbiterStake} tinybars)`);
+          }
+        } catch (e) {
+          // skip
+        }
+      }
+    }
+
+    return eligible;
   }
 
   selectArbiters(eligibleArbiters: StakeEntity[], disputeId: number, timestamp: number): string[] {
