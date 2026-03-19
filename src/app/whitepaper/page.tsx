@@ -324,7 +324,7 @@ export default function WhitepaperPage() {
             <TopicCard
               name="Smart Contract (AgentRepStaking.sol V2)"
               events={["stake", "slash", "unstake", "getStake", "stakeAsArbiter", "depositDisputeBond", "returnDisputeBond", "forfeitDisputeBond", "rewardArbiter"]}
-              description="Solidity contract deployed on Hedera (0.0.8278509). Manages HBAR staking, slashing, arbiter staking, dispute bonds, and arbiter rewards. All state changes are on-chain and verifiable."
+              description="Solidity contract deployed on Hedera (0.0.8289113). Manages HBAR staking, slashing, arbiter staking, dispute bonds, and arbiter rewards. All state changes are on-chain and verifiable."
             />
           </div>
 

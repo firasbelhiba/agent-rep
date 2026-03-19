@@ -6,13 +6,13 @@
   <p><strong>On-Chain Reputation Infrastructure for the Agentic Economy</strong></p>
 
   <p>
-    <a href="https://hashscan.io/testnet/contract/0.0.8278509">
+    <a href="https://hashscan.io/testnet/contract/0.0.8289113">
       <img src="https://img.shields.io/badge/Hedera-Testnet-8259EF?style=flat-square&logo=hedera&logoColor=white" />
     </a>
     <img src="https://img.shields.io/badge/Standard-ERC--8004-8259EF?style=flat-square" />
     <img src="https://img.shields.io/badge/HCS--10-Agent%20Identity-6B46C1?style=flat-square" />
-    <a href="https://hashscan.io/testnet/contract/0.0.8278509">
-      <img src="https://img.shields.io/badge/Contract-0.0.8278509-4C1D95?style=flat-square" />
+    <a href="https://hashscan.io/testnet/contract/0.0.8289113">
+      <img src="https://img.shields.io/badge/Contract-0.0.8289113-4C1D95?style=flat-square" />
     </a>
     <img src="https://img.shields.io/badge/Hackathon-Hello%20Future%20Apex%202026-8259EF?style=flat-square" />
   </p>
@@ -20,7 +20,7 @@
   <p>
     <a href="https://agentrep.xyz">Live Demo</a> ·
     <a href="https://www.npmjs.com/package/agent-rep-sdk">npm: agent-rep-sdk</a> ·
-    <a href="https://hashscan.io/testnet/contract/0.0.8278509">Smart Contract</a> ·
+    <a href="https://hashscan.io/testnet/contract/0.0.8289113">Smart Contract</a> ·
     <a href="https://hashscan.io/testnet/topic/0.0.8264956">Identity Topic</a> ·
     <a href="https://hashscan.io/testnet/topic/0.0.8264959">Feedback Topic</a> ·
     <a href="https://hashscan.io/testnet/topic/0.0.8264962">Validation Topic</a> ·
@@ -75,7 +75,7 @@ All contracts and HCS topics are live on **Hedera Testnet** and publicly verifia
 |---|---|---|
 | Live Website | `agentrep.xyz` | [agentrep.xyz](https://agentrep.xyz) |
 | TypeScript SDK | `agent-rep-sdk` | [npm](https://www.npmjs.com/package/agent-rep-sdk) |
-| AgentRepStaking Contract | `0.0.8278509` | [HashScan](https://hashscan.io/testnet/contract/0.0.8278509) · [Sourcify (Verified)](https://repo.sourcify.dev/contracts/full_match/296/0x00000000000000000000000000000000007E1c27/) |
+| AgentRepStaking Contract | `0.0.8289113` | [HashScan](https://hashscan.io/testnet/contract/0.0.8289113) · [Sourcify (Verified)](https://repo.sourcify.dev/contracts/full_match/296/0x00000000000000000000000000000000007E1c27/) |
 | HCS Identity Topic | `0.0.8264956` | [View on HashScan](https://hashscan.io/testnet/topic/0.0.8264956) |
 | HCS Feedback Topic | `0.0.8264959` | [View on HashScan](https://hashscan.io/testnet/topic/0.0.8264959) |
 | HCS Validation Topic | `0.0.8264962` | [View on HashScan](https://hashscan.io/testnet/topic/0.0.8264962) |
@@ -268,7 +268,7 @@ hcs-11:hcs://1/<profileTopicId>
 | Network | Hedera Testnet / Mainnet |
 | Consensus | HCS topics for immutable event logging |
 | Smart Contract | Solidity 0.8.20+ — AgentRepStaking.sol |
-| Contract ID | [`0.0.8278509`](https://hashscan.io/testnet/contract/0.0.8278509) (testnet) |
+| Contract ID | [`0.0.8289113`](https://hashscan.io/testnet/contract/0.0.8289113) (testnet) |
 | HCS Identity Topic | [`0.0.8264956`](https://hashscan.io/testnet/topic/0.0.8264956) |
 | HCS Feedback Topic | [`0.0.8264959`](https://hashscan.io/testnet/topic/0.0.8264959) |
 | HCS Validation Topic | [`0.0.8264962`](https://hashscan.io/testnet/topic/0.0.8264962) |
@@ -534,7 +534,7 @@ Arbiters:          share of dispute bond as reward
 
 ## Smart Contract
 
-**`AgentRepStaking.sol`** — deployed at **[`0.0.8278509`](https://hashscan.io/testnet/contract/0.0.8278509)** on Hedera Testnet · [Source Verified on Sourcify](https://repo.sourcify.dev/contracts/full_match/296/0x00000000000000000000000000000000007E1c27/)
+**`AgentRepStaking.sol`** — deployed at **[`0.0.8289113`](https://hashscan.io/testnet/contract/0.0.8289113)** on Hedera Testnet · [Source Verified on Sourcify](https://repo.sourcify.dev/contracts/full_match/296/0x00000000000000000000000000000000007E1c27/)
 
 ```solidity
 // ── Core Staking ──
@@ -705,7 +705,7 @@ DB_PATH=data/agentrip.db
 HEDERA_NETWORK=testnet
 HEDERA_ACCOUNT_ID=0.0.YOUR_ACCOUNT_ID
 HEDERA_PRIVATE_KEY=your_hex_private_key
-STAKING_CONTRACT_ID=0.0.8278509
+STAKING_CONTRACT_ID=0.0.8289113
 ```
 
 ### 4. Start
@@ -893,7 +893,7 @@ agent-rep/
 - Technical whitepaper (PDF) + architecture documentation
 
 ### Phase 2 — Smart Contract & On-Chain Slashing ✅
-- [`AgentRepStaking.sol`](https://hashscan.io/testnet/contract/0.0.8278509) deployed on Hedera Testnet (`0.0.8278509`)
+- [`AgentRepStaking.sol`](https://hashscan.io/testnet/contract/0.0.8289113) deployed on Hedera Testnet (`0.0.8289113`)
 - On-chain stake management and dispute-triggered slashing
 - Mirror node payment verification for agent registration
 - Operating balance system with per-transaction fee deduction
@@ -964,7 +964,7 @@ Agents and community members stake HBAR to increase their influence and earn pro
 
 | Resource | Link |
 |---|---|
-| AgentRepStaking Contract | [hashscan.io/testnet/contract/0.0.8278509](https://hashscan.io/testnet/contract/0.0.8278509) |
+| AgentRepStaking Contract | [hashscan.io/testnet/contract/0.0.8289113](https://hashscan.io/testnet/contract/0.0.8289113) |
 | Sourcify Verification | [repo.sourcify.dev/.../0x007E1c27](https://repo.sourcify.dev/contracts/full_match/296/0x00000000000000000000000000000000007E1c27/) |
 | HCS Identity Topic | [hashscan.io/testnet/topic/0.0.8264956](https://hashscan.io/testnet/topic/0.0.8264956) |
 | HCS Feedback Topic | [hashscan.io/testnet/topic/0.0.8264959](https://hashscan.io/testnet/topic/0.0.8264959) |

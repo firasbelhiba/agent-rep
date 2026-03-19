@@ -216,7 +216,35 @@ export class StakingController {
         validationStatus,
       );
 
-      // If dispute entered voting phase, notify selected arbiters via HCS-10
+      // Log DISPUTE_FILED to HCS
+      let disputeHcsSequence: string | undefined;
+      if (this.hederaConfig.isConfigured()) {
+        try {
+          const topics = await this.systemConfig.getHCSTopics();
+          if (topics.feedback) {
+            disputeHcsSequence = await this.hcsService.logInteraction(
+              topics.feedback,
+              HCSMessageType.STAKE_SLASHED, // reuse closest type
+              {
+                type: 'DISPUTE_FILED',
+                disputeId: dispute.id,
+                feedbackId: dispute.feedbackId,
+                disputerId: dispute.disputerId,
+                accusedId: dispute.accusedId,
+                reason: dispute.reason,
+                bondAmount: dispute.bondAmount,
+                status: dispute.status,
+                selectedArbiter: dispute.getSelectedArbiters()[0] || null,
+              },
+            );
+            this.logger.log(`DISPUTE_FILED logged to HCS — seq: ${disputeHcsSequence}`);
+          }
+        } catch (e) {
+          this.logger.warn('Failed to log dispute to HCS', e);
+        }
+      }
+
+      // If dispute entered voting phase, notify selected arbiter via HCS-10
       if (dispute.status === 'voting' && dispute.getSelectedArbiters().length > 0) {
         const arbiterIds = dispute.getSelectedArbiters();
         const rewardPerArbiter = Math.floor(dispute.bondAmount / arbiterIds.length);
@@ -235,19 +263,19 @@ export class StakingController {
           },
           { findOne: (opts: any) => this.agentsService.findById(opts?.where?.agentId) },
         ).then(result => {
-          this.logger.log(`Arbiter notifications for dispute #${dispute.id}: ${result.sent.length} sent, ${result.failed.length} failed`);
+          this.logger.log(`Arbiter notification for dispute #${dispute.id}: ${result.sent.length} sent, ${result.failed.length} failed`);
         }).catch(err => {
-          this.logger.error(`Failed to notify arbiters for dispute #${dispute.id}: ${err.message}`);
+          this.logger.error(`Failed to notify arbiter for dispute #${dispute.id}: ${err.message}`);
         });
       }
 
-      return { dispute };
+      return { dispute, hcsSequenceNumber: disputeHcsSequence };
     } catch (e) {
       throw new HttpException(e.message, HttpStatus.CONFLICT);
     }
   }
 
-  /** Resolve a dispute — slashes via smart contract when deployed */
+  /** Resolve a dispute — arbiter votes, slashes via smart contract when upheld */
   @Post('dispute/:id/resolve')
   async resolveDispute(
     @Param('id') id: string,
@@ -261,16 +289,34 @@ export class StakingController {
     }
 
     try {
-      const { dispute, slashedStake, txId } = await this.stakingService.resolveDispute(
-        parseInt(id, 10),
-        arbiter.agentId,
-        body.upheld,
-        body.notes,
-      );
+      // Try submitArbiterVote first (for disputes in voting phase)
+      let dispute, slashedStake, txId;
+      try {
+        const result = await this.stakingService.submitArbiterVote(
+          parseInt(id, 10),
+          arbiter.agentId,
+          body.upheld ? 'upheld' : 'dismissed',
+          body.notes || 'Arbiter vote submitted',
+        );
+        dispute = result.dispute;
+        slashedStake = result.slashedStake;
+        txId = result.txId;
+      } catch (e) {
+        // Fallback to resolveDispute for pending disputes (no arbiters assigned)
+        const result = await this.stakingService.resolveDispute(
+          parseInt(id, 10),
+          arbiter.agentId,
+          body.upheld,
+          body.notes,
+        );
+        dispute = result.dispute;
+        slashedStake = result.slashedStake;
+        txId = result.txId;
+      }
 
-      // Log to HCS
+      // Log to HCS — always log resolution, whether upheld or dismissed
       let hcsSequenceNumber: string | undefined;
-      if (this.hederaConfig.isConfigured() && body.upheld) {
+      if (this.hederaConfig.isConfigured()) {
         const topics = await this.systemConfig.getHCSTopics();
         if (topics.feedback) {
           try {
@@ -278,13 +324,16 @@ export class StakingController {
               topics.feedback,
               HCSMessageType.STAKE_SLASHED,
               {
+                type: body.upheld ? 'DISPUTE_UPHELD' : 'DISPUTE_DISMISSED',
                 disputeId: dispute.id,
                 accusedAgentId: dispute.accusedId,
-                slashPercent: SLASH_PERCENT,
                 resolvedBy: arbiter.agentId,
+                vote: body.upheld ? 'upheld' : 'dismissed',
                 feedbackId: dispute.feedbackId,
+                slashPercent: body.upheld ? SLASH_PERCENT : 0,
                 contractTxId: txId,
                 onChain: !!txId,
+                notes: body.notes,
               },
             );
             dispute.hcsSequenceNumber = hcsSequenceNumber;

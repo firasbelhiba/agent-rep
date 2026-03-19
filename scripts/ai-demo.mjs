@@ -158,6 +158,12 @@ async function showMenu() {
   ║  ${c.green}5.${c.reset} Arbiter Eligibility                    ║
   ║     ${c.gray}See who qualifies as arbiter${c.reset}             ║
   ║                                            ║
+  ║  ${c.green}6.${c.reset} File Dispute                           ║
+  ║     ${c.gray}Dispute a feedback + deposit bond${c.reset}        ║
+  ║                                            ║
+  ║  ${c.green}7.${c.reset} Resolve Dispute (Arbiter)              ║
+  ║     ${c.gray}Arbiter votes on a dispute${c.reset}               ║
+  ║                                            ║
   ║  ${c.red}0.${c.reset} Exit                                   ║
   ${c.purple}${c.bold}╚════════════════════════════════════════════╝${c.reset}
 `);
@@ -501,6 +507,191 @@ async function scenarioRequestValidation() {
 }
 
 // ============================================================
+// SCENARIO 6: File Dispute
+// ============================================================
+async function scenarioFileDispute() {
+  divider('FILE DISPUTE');
+
+  console.log(`  ${c.gray}The agent who RECEIVED the feedback disputes it.${c.reset}\n`);
+
+  const disputer = await selectAgent('Select agent filing the dispute (feedback receiver):');
+
+  // Fetch feedback for this agent
+  log('SDK', c.purple, `Fetching feedback received by ${disputer.name}...`);
+  const fbRes = await api(`/feedback?agentId=${disputer.agentId}`);
+  const feedbackList = fbRes.feedback || [];
+
+  if (feedbackList.length === 0) {
+    log('⚠', c.yellow, `No feedback found for ${disputer.name}. Submit feedback first (option 2).`);
+    return;
+  }
+
+  console.log(`\n  ${c.bold}Feedback received by ${disputer.color}${disputer.name}${c.reset}:\n`);
+  feedbackList.forEach((fb, i) => {
+    const giverAgent = agents.find(a => a.agentId === fb.fromAgentId);
+    const giverName = giverAgent?.name || fb.fromAgentId;
+    console.log(`  ${c.bold}${i + 1}.${c.reset} Score: ${fb.value >= 60 ? c.green : c.red}${fb.value}/100${c.reset} | From: ${c.cyan}${giverName}${c.reset} | Tag: ${fb.tag1 || 'none'} | ${c.gray}${fb.feedbackId?.substring(0, 8)}...${c.reset}`);
+  });
+
+  const choice = await ask(`\n  Select feedback # to dispute: ${c.purple}→ ${c.reset}`);
+  const selectedFb = feedbackList[parseInt(choice) - 1];
+  if (!selectedFb) {
+    log('✗', c.red, 'Invalid selection.');
+    return;
+  }
+
+  const reason = await ask(`  Reason for dispute: ${c.purple}→ ${c.reset}`) || 'Unfair rating — does not reflect actual interaction quality.';
+
+  console.log(`\n  ${c.yellow}${c.bold}Filing dispute...${c.reset}`);
+  console.log(`  ${c.gray}Bond: 2 HBAR (deposited to smart contract)${c.reset}`);
+  console.log(`  ${c.gray}Reason: "${reason}"${c.reset}\n`);
+
+  try {
+    const res = await api('/staking/dispute', {
+      method: 'POST',
+      headers: { 'X-Agent-Key': disputer.apiKey },
+      body: JSON.stringify({ feedbackId: selectedFb.feedbackId, reason }),
+    });
+
+    if (res.statusCode && res.statusCode >= 400) {
+      log('✗', c.red, `Dispute failed: ${res.message}`);
+      return;
+    }
+
+    const dispute = res.dispute;
+    log('✓', c.green, `Dispute filed! ID: ${c.bold}#${dispute?.id}${c.reset}`);
+
+    if (res.hcsSequenceNumber) {
+      log('HCS', c.cyan, `DISPUTE_FILED logged to HCS — Sequence: ${c.bold}${res.hcsSequenceNumber}${c.reset}`);
+    }
+
+    if (dispute?.status === 'voting') {
+      const arbiters = JSON.parse(dispute.selectedArbiters || '[]');
+      const arbiterAgent = agents.find(a => a.agentId === arbiters[0]);
+      log('ALGO', c.yellow, `Arbiter selected: ${c.bold}${arbiterAgent?.name || arbiters[0]}${c.reset}`);
+      log('HCS-10', c.cyan, `ARBITRATION_REQUEST sent to arbiter's inbound topic`);
+      console.log(`\n  ${c.gray}The arbiter has 48 hours to vote. Use option 7 to respond as arbiter.${c.reset}`);
+    } else {
+      log('⚠', c.yellow, `No eligible arbiters found. Dispute is pending.`);
+      console.log(`  ${c.gray}Requirements: Score ≥ 500, Activity ≥ 10, Arbiter stake ≥ 10 HBAR${c.reset}`);
+    }
+  } catch (e) {
+    log('✗', c.red, `Error: ${e.message}`);
+  }
+}
+
+// ============================================================
+// SCENARIO 7: Resolve Dispute (Arbiter)
+// ============================================================
+async function scenarioResolveDispute() {
+  divider('RESOLVE DISPUTE (ARBITER)');
+
+  console.log(`  ${c.gray}The selected arbiter reviews the dispute and votes.${c.reset}\n`);
+
+  const arbiter = await selectAgent('Select arbiter agent:');
+
+  // Fetch pending disputes
+  log('SDK', c.purple, 'Fetching pending disputes...');
+  const disputesRes = await api('/staking/disputes/all');
+  const disputes = (disputesRes.disputes || disputesRes || []).filter(d => d.status === 'voting');
+
+  if (disputes.length === 0) {
+    log('⚠', c.yellow, 'No disputes awaiting arbitration. File a dispute first (option 6).');
+    return;
+  }
+
+  console.log(`\n  ${c.bold}Disputes awaiting arbitration:${c.reset}\n`);
+  disputes.forEach((d, i) => {
+    const disputerAgent = agents.find(a => a.agentId === d.disputerId);
+    const accusedAgent = agents.find(a => a.agentId === d.accusedId);
+    const arbiterIds = JSON.parse(d.selectedArbiters || '[]');
+    const isAssigned = arbiterIds.includes(arbiter.agentId);
+    console.log(`  ${c.bold}${i + 1}.${c.reset} Dispute #${d.id} | ${c.cyan}${disputerAgent?.name || d.disputerId}${c.reset} vs ${c.red}${accusedAgent?.name || d.accusedId}${c.reset} | ${isAssigned ? c.green + 'YOU ARE ARBITER' : c.gray + 'Not assigned'}${c.reset}`);
+    console.log(`     ${c.gray}Reason: "${d.reason}"${c.reset}`);
+  });
+
+  const choice = await ask(`\n  Select dispute # to resolve: ${c.purple}→ ${c.reset}`);
+  const selectedDispute = disputes[parseInt(choice) - 1];
+  if (!selectedDispute) {
+    log('✗', c.red, 'Invalid selection.');
+    return;
+  }
+
+  // Arbiter decides
+  const mode = await ask(`\n  ${c.bold}How should ${arbiter.name} decide?${c.reset}\n  ${c.green}1.${c.reset} Manual (you decide)\n  ${c.green}2.${c.reset} AI-powered (${arbiter.name}'s LLM evaluates)\n\n  ${c.purple}→ ${c.reset}`);
+
+  let upheld, notes;
+
+  if (mode === '2') {
+    log('AI', c.green, `${arbiter.name} is evaluating the dispute...`);
+    const disputerAgent = agents.find(a => a.agentId === selectedDispute.disputerId);
+    const accusedAgent = agents.find(a => a.agentId === selectedDispute.accusedId);
+
+    const aiResponse = await aiChat(arbiter.model,
+      'You are an impartial arbiter evaluating a dispute between two AI agents. You must decide if the feedback was fair or unfair. Respond ONLY with valid JSON.',
+      `Dispute details:
+- ${disputerAgent?.name || 'Agent'} received feedback and is disputing it
+- ${accusedAgent?.name || 'Agent'} gave the feedback
+- Reason for dispute: "${selectedDispute.reason}"
+- Original feedback score: unknown
+
+Should this dispute be upheld (feedback was unfair) or dismissed (feedback was fair)?
+Reply ONLY with: {"upheld": true/false, "reasoning": "<one sentence>"}`
+    );
+
+    try {
+      const parsed = JSON.parse(aiResponse.replace(/```json?\n?/g, '').replace(/```/g, '').trim());
+      upheld = !!parsed.upheld;
+      notes = parsed.reasoning || 'AI evaluation complete.';
+    } catch (e) {
+      upheld = true;
+      notes = 'AI evaluation: dispute appears valid.';
+    }
+
+    log('AI', c.green, `${arbiter.name} decided: ${upheld ? c.green + 'UPHELD' : c.red + 'DISMISSED'}${c.reset}`);
+    console.log(`  ${c.gray}  Reasoning: "${notes}"${c.reset}`);
+  } else {
+    const vote = await ask(`  Uphold dispute? (y/n): ${c.purple}→ ${c.reset}`);
+    upheld = vote.toLowerCase() === 'y' || vote.toLowerCase() === 'yes';
+    notes = await ask(`  Notes: ${c.purple}→ ${c.reset}`) || (upheld ? 'Dispute upheld by arbiter.' : 'Dispute dismissed by arbiter.');
+  }
+
+  console.log(`\n  ${c.yellow}${c.bold}Submitting arbiter vote...${c.reset}`);
+
+  try {
+    const res = await api(`/staking/dispute/${selectedDispute.id}/resolve`, {
+      method: 'POST',
+      headers: { 'X-Agent-Key': arbiter.apiKey },
+      body: JSON.stringify({ upheld, notes }),
+    });
+
+    if (res.statusCode && res.statusCode >= 400) {
+      log('✗', c.red, `Resolution failed: ${res.message}`);
+      return;
+    }
+
+    const dispute = res.dispute;
+    log('✓', c.green, `Dispute resolved: ${c.bold}${upheld ? 'UPHELD' : 'DISMISSED'}${c.reset}`);
+
+    if (res.hcsSequenceNumber) {
+      log('HCS', c.cyan, `${upheld ? 'DISPUTE_UPHELD' : 'DISPUTE_DISMISSED'} logged to HCS — Sequence: ${c.bold}${res.hcsSequenceNumber}${c.reset}`);
+    }
+
+    if (upheld) {
+      log('SLASH', c.red, `Feedback giver's stake slashed by 10%`);
+      if (res.txId) {
+        log('CONTRACT', c.purple, `Slash executed on smart contract — TX: ${c.gray}${res.txId}${c.reset}`);
+      }
+      console.log(`\n  ${c.green}Disputer's 2 HBAR bond returned.${c.reset}`);
+    } else {
+      console.log(`\n  ${c.red}Disputer loses their 2 HBAR bond. Goes to the accused as compensation.${c.reset}`);
+    }
+  } catch (e) {
+    log('✗', c.red, `Error: ${e.message}`);
+  }
+}
+
+// ============================================================
 // MAIN
 // ============================================================
 async function main() {
@@ -529,6 +720,14 @@ async function main() {
         break;
       case '5':
         await scenarioArbiterCheck();
+        await waitForEnter('Press ENTER to return to menu...');
+        break;
+      case '6':
+        await scenarioFileDispute();
+        await waitForEnter('Press ENTER to return to menu...');
+        break;
+      case '7':
+        await scenarioResolveDispute();
         await waitForEnter('Press ENTER to return to menu...');
         break;
       case '0':

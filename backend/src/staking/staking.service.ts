@@ -22,7 +22,7 @@ export const DISPUTE_BOND_UNVALIDATED = 200_000_000; // 2 HBAR — feedback not 
 export const DISPUTE_BOND_VALIDATED = 400_000_000;    // 4 HBAR — feedback already validated & confirmed
 export const DISPUTE_BOND_OUTLIER = 0;                // Free — feedback already flagged as outlier
 export const DISPUTE_BOND = 200_000_000;              // Default fallback (2 HBAR)
-export const ARBITER_PANEL_SIZE = 3;
+export const ARBITER_PANEL_SIZE = 1;
 export const ARBITER_TIMEOUT_MS = 48 * 60 * 60 * 1000; // 48 hours
 export const VALIDATOR_PENALTY_PERCENT = 5; // 5% reputation penalty for validators who confirmed bad feedback
 
