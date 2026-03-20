@@ -591,7 +591,7 @@ export class StakingService {
   ): Promise<{ dispute: DisputeEntity; slashedStake?: StakeEntity; txId?: string }> {
     const dispute = await this.disputeRepo.findOne({ where: { id: disputeId } });
     if (!dispute) throw new Error('Dispute not found');
-    if (dispute.status !== 'pending') throw new Error('Dispute already resolved or in voting');
+    if (dispute.status !== 'pending' && dispute.status !== 'voting') throw new Error('Dispute already resolved');
 
     dispute.status = upheld ? 'upheld' : 'dismissed';
     dispute.resolvedBy = resolvedBy;
