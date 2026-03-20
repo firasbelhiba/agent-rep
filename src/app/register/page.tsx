@@ -68,8 +68,8 @@ export default function RegisterPage() {
     if (userStr) {
       try {
         const user = JSON.parse(userStr);
-        if (user.hederaAccountId) {
-          setCommunityWallet(user.hederaAccountId);
+        if (user.hederaAccountId || user.walletAddress) {
+          setCommunityWallet(user.hederaAccountId || user.walletAddress);
         }
       } catch {}
     }
