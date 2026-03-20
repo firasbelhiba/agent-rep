@@ -96,50 +96,49 @@ export default function WhitepaperPage() {
               description="Agents must stake HBAR before they can submit feedback. If their feedback is disputed and found dishonest, their stake is slashed. Arbiters — high-reputation agents who resolve disputes — must stake even more."
               formula="Agent stake: 5 HBAR min | Arbiter stake: 10 HBAR min | Dispute bond: 2 HBAR | Slash: 10% per upheld dispute"
               details={[
-                "Registration requires 5 HBAR stake via AgentRepStaking smart contract",
-                "Arbiter eligibility: 10 HBAR stake + score >= 500 (Trusted) + 10 interactions minimum",
-                "Variable dispute bond: 2 HBAR (unvalidated feedback), 4 HBAR (validated & confirmed), free (already flagged as outlier)",
-                "If upheld: feedback giver slashed 10%, validators who confirmed get reputation penalty, disputer gets bond back",
-                "If dismissed: disputer loses bond (paid to accused as compensation), arbiters still rewarded",
+                "Registration requires 5 HBAR stake via AgentRepStaking smart contract (live)",
+                "Arbiter eligibility: 10 HBAR arbiter stake + score >= 500 (Trusted) + 10 interactions (live — verified on-chain via ContractCallQuery)",
+                "Dispute bond: 2 HBAR deposited on-chain via depositDisputeBond() (live)",
+                "If upheld: feedback giver slashed 10% via slash(), feedback revoked, disputer bond returned (live)",
+                "If dismissed: disputer loses bond via forfeitDisputeBond() (live)",
+                "Roadmap: variable bond tiers (4 HBAR for validated feedback, free for outlier-flagged)",
+                "Roadmap: arbiter rewards paid from dispute bond pool via rewardArbiter()",
               ]}
               impact="Everyone has skin in the game — agents stake to give feedback, arbiters stake more to judge, and disputers risk their bond to prevent frivolous claims."
             />
 
             <MechanismCard
               number="03"
-              title="Agent-Triggered Validation & Outlier Detection"
+              title="Outlier Detection & Feedback Validation"
               color="from-amber-600 to-amber-800"
-              description="Feedback starts as unvalidated. Either the feedback giver or receiver can manually trigger validation by clicking &quot;Request Validation.&quot; The system then checks for eligible validators and assigns them if available. Combined with z-score outlier detection for statistical anomaly filtering."
+              description="The reputation algorithm includes z-score outlier detection that automatically discounts suspicious ratings. A full validation layer with third-party validators is designed and planned for Phase 4."
               formula="outlierDiscount = max(0.1, 1.0 - (zScore - 1.5) / 3.0)"
               details={[
-                "Feedback starts as &quot;unvalidated&quot; — no automatic validator assignment on submission",
-                "Either party clicks &quot;Request Validation&quot; to trigger the process manually",
-                "System checks for eligible validators: 5 HBAR stake + VERIFIED tier (score >= 200) + activity >= 3",
-                "If validators found → 2 assigned via deterministic hash-based selection, notified via HCS-10, 24h deadline",
-                "If no validators available → returns &quot;No qualified validators available yet&quot; with eligibility requirements",
-                "Feedback status lifecycle: unvalidated → pending_validation → validated (or no_validators)",
-                "Bootstrap phase: early network has no validators, feedback accepted with lower weight",
-                "As agents interact and build reputation, they naturally become eligible validators",
-                "Validators cannot be the feedback giver or the target agent (conflict of interest)",
-                "Z-score outlier detection: feedback >1.5 std dev from mean auto-discounted to 0.1x weight",
-                "Validators who confirm bad feedback get reputation penalties if disputes are upheld",
+                "Z-score outlier detection: feedback >1.5 std dev from mean auto-discounted to 0.1x weight (live)",
+                "Reputation-weighted feedback: giver's score influences feedback weight (live)",
+                "Feedback revocation: upheld disputes remove bad feedback and recalculate reputation (live)",
+                "Roadmap: validator role — 5 HBAR stake + VERIFIED tier (score >= 200) + activity >= 3",
+                "Roadmap: Request Validation button for either party to trigger third-party review",
+                "Roadmap: 2 validators assigned via deterministic hash-based selection, notified via HCS-10",
+                "Roadmap: feedback status lifecycle — unvalidated → pending_validation → validated",
+                "Roadmap: validators penalized for confirming feedback later overturned by arbiters",
               ]}
-              impact="If 10 agents rate Agent B at +90 and one agent rates it at -100, the outlier is automatically discounted instead of dragging down the average. During the bootstrap phase, unvalidated feedback is still accepted but carries lower weight until the validator pool matures."
+              impact="If 10 agents rate Agent B at +90 and one agent rates it at -100, the outlier is automatically discounted instead of dragging down the average. The validation layer (Phase 4) will add a human-in-the-loop confirmation step before feedback is fully trusted."
             />
 
             <MechanismCard
               number="04"
-              title="Validation of Validators"
+              title="Recursive Trust (Planned)"
               color="from-blue-600 to-blue-800"
-              description="When an agent validates another agent's capabilities, the weight of that validation depends on the validator's own reputation — creating a recursive web of trust."
+              description="In the planned validation layer, the weight of a validation depends on the validator's own reputation — creating a recursive web of trust. This is part of the Phase 4 incentivization model."
               formula="validationWeight = 0.3 + 0.7 × (validatorScore / 1000)"
               details={[
-                "Validator with score 0 → validation counts at 0.3x weight",
-                "Validator with score 500 → validation counts at 0.65x weight",
-                "Validator with score 1000 → validation counts at full 1.0x weight",
-                "Validator scores are cached per computation to prevent infinite recursion",
+                "Roadmap: validator with score 0 → validation counts at 0.3x weight",
+                "Roadmap: validator with score 500 → validation counts at 0.65x weight",
+                "Roadmap: validator with score 1000 → validation counts at full 1.0x weight",
+                "Roadmap: validator scores cached per computation to prevent infinite recursion",
               ]}
-              impact="A low-reputation agent cannot inflate another agent's reliability score. Only established, trusted validators carry meaningful weight."
+              impact="A low-reputation agent will not be able to inflate another agent's reliability score. Only established, trusted validators will carry meaningful weight. This creates a self-reinforcing trust network."
             />
           </div>
         </Section>
@@ -203,7 +202,7 @@ export default function WhitepaperPage() {
         {/* 5. Decentralized Arbitration */}
         <Section id="arbitration" label="Section 5" title="Decentralized Arbitration">
           <P>
-            When feedback is disputed, the protocol uses a decentralized arbitration system — no single entity decides the outcome. Arbiters are high-reputation agents with additional stake, selected deterministically and incentivized to judge honestly.
+            When feedback is disputed, the protocol uses a decentralized arbitration system. Arbiters are high-reputation agents with additional stake, selected deterministically and incentivized to judge honestly. Currently, one arbiter is selected per dispute. The roadmap includes expanding to a 3-arbiter panel with majority vote.
           </P>
 
           <div className="mt-8 space-y-4">
@@ -233,7 +232,7 @@ export default function WhitepaperPage() {
                       <td className="px-5 py-3 text-sm text-[#b47aff]">&ge; 10 interactions</td>
                     </tr>
                     <tr>
-                      <td className="px-5 py-3 text-sm text-amber-400 font-medium">Elite Arbiter</td>
+                      <td className="px-5 py-3 text-sm text-amber-400 font-medium">Elite Arbiter <span className="text-[10px] text-[#9b9b9d]">(planned)</span></td>
                       <td className="px-5 py-3 text-sm text-amber-400">20 HBAR</td>
                       <td className="px-5 py-3 text-sm text-amber-400">&ge; 800 (Elite)</td>
                       <td className="px-5 py-3 text-sm text-amber-400">&ge; 20 interactions</td>
@@ -247,12 +246,12 @@ export default function WhitepaperPage() {
               <h4 className="text-white font-medium text-[15px] mb-4">Dispute Resolution Flow</h4>
               <div className="space-y-3">
                 {[
-                  { step: "1", title: "Dispute Filed", desc: "Agent deposits a variable bond: 2 HBAR (unvalidated feedback), 4 HBAR (validated & confirmed), or free (already flagged as outlier). Higher cost to challenge peer-approved feedback discourages frivolous disputes." },
-                  { step: "2", title: "Arbiter Selection", desc: "System deterministically selects 3 arbiters from the qualified pool using hash(disputeId + timestamp). Neither the disputer nor the accused can be selected. Agents who gave feedback to either party are excluded (conflict of interest)." },
-                  { step: "3", title: "Arbitration via HCS-10", desc: "Each arbiter receives an ARBITRATION_REQUEST message on their HCS-10 inbound topic. They have 48 hours to vote 'upheld' or 'dismissed' with reasoning." },
-                  { step: "4", title: "Timeout & Rotation", desc: "If an arbiter doesn't respond within 48 hours, they're automatically replaced by the next agent in the deterministic sequence. Non-responsive arbiters receive a reliability penalty." },
-                  { step: "5", title: "Majority Vote", desc: "Once 2 of 3 arbiters vote, the majority wins. If upheld: feedback giver slashed 10%, validators who confirmed get reputation penalty. If dismissed: disputer loses bond (paid to accused)." },
-                  { step: "6", title: "Validator Accountability", desc: "When a dispute is upheld, validators who confirmed the bad feedback receive a reputation penalty. Validators who correctly flagged it as an outlier are rewarded. This creates three layers of defense: outlier detection, validation, and arbitration." },
+                  { step: "1", title: "Dispute Filed (live)", desc: "Agent deposits a 2 HBAR bond on-chain via depositDisputeBond() on the smart contract. This prevents spam disputes — you don't dispute unless you mean it." },
+                  { step: "2", title: "Arbiter Selection (live)", desc: "System deterministically selects 1 arbiter from the eligible pool using hash-based selection. Neither the disputer nor the accused can be selected. The arbiter is notified via HCS-10 on their inbound topic." },
+                  { step: "3", title: "Arbiter Vote (live)", desc: "The arbiter reviews the dispute and votes 'upheld' or 'dismissed' with reasoning. If upheld: feedback giver slashed 10% via slash() on contract, disputed feedback revoked, disputer bond returned. If dismissed: disputer loses bond." },
+                  { step: "4", title: "On-Chain Resolution (live)", desc: "Slash and bond transactions execute on the smart contract. Resolution is logged to HCS. Reputation recalculated with the revoked feedback excluded." },
+                  { step: "5", title: "3-Arbiter Panel (planned)", desc: "Expand to 3 arbiters per dispute with 2/3 majority vote. 48-hour timeout with automatic rotation for non-responsive arbiters." },
+                  { step: "6", title: "Validator Accountability (planned)", desc: "When validation is implemented, validators who confirmed bad feedback will receive reputation penalties. Variable bond tiers: 4 HBAR for validated feedback, free for outlier-flagged." },
                 ].map((item) => (
                   <div key={item.step} className="flex gap-4">
                     <div className="w-8 h-8 rounded-full bg-[#8259ef]/20 border border-[#8259ef]/40 flex items-center justify-center shrink-0">
@@ -485,34 +484,44 @@ const trusted = await client.isTrusted('agent-xxx', {
         <Section id="roadmap" label="Section 10" title="Roadmap">
           <div className="space-y-4">
             <RoadmapItem phase="Phase 1" status="Complete" title="Core Protocol" items={[
-              "ERC-8004 Identity, Reputation & Validation Registries",
-              "HCS-10 agent connections and HCS-11 profiles",
-              "HOL Registry Broker integration with credit check and UAID assignment",
+              "ERC-8004 Identity & Reputation Registries on HCS",
+              "HCS-10 agent-to-agent communication with real topic creation",
+              "HCS-11 agent identity profiles with verifiable metadata",
+              "HOL Registry Broker integration for cross-ecosystem discoverability",
               "HCS on-chain logging with HashScan proof links",
-              "NFT-based reputation badges (HTS)",
-              "Community feedback with wallet authentication",
-            ]} />
-            <RoadmapItem phase="Phase 2" status="Complete" title="Trust Mechanisms" items={[
-              "Reputation-weighted feedback (giver score influences weight)",
-              "Stake-based accountability (HBAR staking + dispute + slash)",
-              "Agent-triggered validation with outlier detection (z-score method)",
-              "Validation of validators (recursive trust weighting)",
+              "Community feedback with wallet authentication (HashConnect)",
               "User-paid registration (8.5 HBAR via HashPack wallet)",
+              "TypeScript SDK published on npm (agent-rep-sdk)",
+            ]} />
+            <RoadmapItem phase="Phase 2" status="Complete" title="Staking & Reputation" items={[
+              "Smart contract deployment (AgentRepStaking.sol — 0.0.8291516)",
+              "Agent staking: 5 HBAR at registration via ContractExecuteTransaction",
+              "Reputation-weighted feedback (giver score influences weight)",
+              "Reputation algorithm: Quality 30% + Reliability 30% + Activity 20% + Consistency 20%",
+              "Outlier detection via z-score method (discounts suspicious ratings)",
               "Operating balance system (prepaid credit for transaction fees)",
-              "Smart contract deployment (AgentRepStaking.sol on testnet)",
-              "TypeScript SDK with full demo (agent connection + feedback + validation)",
+              "AI-powered feedback evaluation (reads real HCS conversation from mirror node)",
             ]} />
-            <RoadmapItem phase="Phase 3" status="In Progress" title="Decentralized Arbitration" items={[
-              "Arbiter role: 10 HBAR stake + Trusted tier (score >= 500) + 10 interactions minimum",
-              "Dispute bonds: 2 HBAR deposit required to file dispute (anti-spam)",
-              "Random arbiter selection: deterministic hash-based selection from qualified pool",
-              "3-of-3 panel with majority vote: 2/3 consensus required to resolve",
-              "48-hour timeout with automatic rotation for non-responsive arbiters",
-              "Reward distribution: arbiters paid from dispute bond for participation",
-              "Arbiter accountability: majority rate tracking, reputation penalties for bad judgments",
-              "HCS-10 arbitration messaging: disputes delivered and resolved via agent inbound topics",
+            <RoadmapItem phase="Phase 3" status="Complete" title="Arbitration & Disputes" items={[
+              "Arbiter staking: 10 HBAR via stakeAsArbiter() on smart contract",
+              "Arbiter eligibility: score >= 500 + 10 interactions + 10 HBAR stake (verified on-chain)",
+              "Dispute filing with 2 HBAR bond via depositDisputeBond() on smart contract",
+              "Deterministic arbiter selection via hash-based algorithm",
+              "On-chain slash: 10% of feedback giver stake via slash() on contract",
+              "Bond return/forfeit based on dispute outcome (on-chain)",
+              "Feedback revocation: upheld disputes remove bad feedback and recalculate reputation",
+              "HCS-10 arbitration messaging: disputes and notifications via agent inbound topics",
             ]} />
-            <RoadmapItem phase="Phase 4" status="Planned" title="Production Hardening" items={[
+            <RoadmapItem phase="Phase 4" status="Planned" title="Feedback Validation & Incentivization" items={[
+              "ERC-8004 Validation Registry: third-party validators confirm or flag feedback",
+              "Validator role: 5 HBAR stake + score >= 200 + 3 interactions minimum",
+              "Validator rewards: HBAR from dispute bond pool for accurate validations",
+              "Arbiter rewards: rewardArbiter() on contract — paid for dispute participation",
+              "Incentive alignment: validators penalized for confirming overturned feedback",
+              "Validation weight: validated feedback counts more in reputation algorithm",
+              "Recursive trust: validator reputation influences validation weight",
+            ]} />
+            <RoadmapItem phase="Phase 5" status="Planned" title="Production & Scale" items={[
               "Agent reputation decay — scores decrease without recent activity",
               "Cross-chain reputation bridging (EVM chains via ERC-8004)",
               "Mainnet deployment with production staking parameters",
