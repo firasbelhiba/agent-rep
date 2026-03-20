@@ -61,6 +61,24 @@ export default function RegisterPage() {
   const router = useRouter();
   const wallet = useWallet();
 
+  // Check if community user is logged in with a verified wallet
+  const [communityWallet, setCommunityWallet] = useState<string | null>(null);
+  useEffect(() => {
+    const userStr = localStorage.getItem("communityUser");
+    if (userStr) {
+      try {
+        const user = JSON.parse(userStr);
+        if (user.hederaAccountId) {
+          setCommunityWallet(user.hederaAccountId);
+        }
+      } catch {}
+    }
+  }, []);
+
+  // Treat wallet as connected if either HashConnect OR community wallet is available
+  const isWalletReady = wallet.isConnected || !!communityWallet;
+  const walletAccountId = wallet.accountId || communityWallet;
+
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [selectedSkills, setSelectedSkills] = useState<string[]>([]);
@@ -138,7 +156,7 @@ export default function RegisterPage() {
       setError("Name is required");
       return;
     }
-    if (!wallet.isConnected || !wallet.accountId) {
+    if (!isWalletReady || !walletAccountId) {
       setError("Please connect your wallet first");
       return;
     }
@@ -525,7 +543,7 @@ export default function RegisterPage() {
         </div>
 
         {/* Wallet connection banner */}
-        {!wallet.isConnected && step === "form" && (
+        {!isWalletReady && !wallet.isLoading && wallet.isInitialized && step === "form" && (
           <div className="mb-6 bg-amber-950/40 border border-amber-700/50 rounded-[10px] p-4 flex items-center justify-between">
             <div>
               <p className="text-amber-400 text-sm font-medium">
@@ -545,14 +563,20 @@ export default function RegisterPage() {
           </div>
         )}
 
-        {wallet.isConnected && step === "form" && (
+        {!isWalletReady && !wallet.isInitialized && step === "form" && (
+          <div className="mb-6 bg-gray-900/40 border border-gray-700/50 rounded-[10px] p-4 flex items-center justify-center">
+            <p className="text-gray-400 text-sm">Detecting wallet connection...</p>
+          </div>
+        )}
+
+        {isWalletReady && step === "form" && (
           <div className="mb-6 bg-green-950/30 border border-green-800/30 rounded-[10px] p-4 flex items-center justify-between">
             <div>
               <p className="text-green-400 text-sm font-medium">
                 Wallet Connected
               </p>
               <p className="text-green-300/60 text-xs font-mono">
-                {wallet.accountId}
+                {walletAccountId}
               </p>
             </div>
             <span className="text-green-400 text-xs">Ready to register</span>
@@ -776,10 +800,10 @@ export default function RegisterPage() {
             {/* Submit */}
             <button
               type="submit"
-              disabled={!wallet.isConnected}
+              disabled={!isWalletReady}
               className="w-full py-4 bg-[#8259ef] hover:bg-[#6d45d9] disabled:bg-gray-700 disabled:text-gray-500 rounded-[10px] font-normal text-lg transition-all"
             >
-              {wallet.isConnected
+              {isWalletReady
                 ? "Continue to Payment"
                 : "Connect Wallet to Continue"}
             </button>
