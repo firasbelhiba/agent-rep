@@ -124,12 +124,21 @@ export default function ProfilePage() {
       return;
     }
 
-    if (!wallet.isConnected || !wallet.accountId) {
-      setTopUpResult({
-        success: false,
-        message: "Please connect your wallet first",
-      });
-      return;
+    const isWalletReady = wallet.isConnected || !!userWallet;
+    const walletAccountId = wallet.accountId || userWallet;
+
+    if (!isWalletReady || !walletAccountId) {
+      // Try to connect wallet automatically
+      try {
+        await wallet.connect();
+        return; // User will retry after pairing
+      } catch {
+        setTopUpResult({
+          success: false,
+          message: "Please connect your wallet first",
+        });
+        return;
+      }
     }
 
     if (!OPERATOR_ACCOUNT_ID) {
@@ -143,6 +152,14 @@ export default function ProfilePage() {
     setTopUpLoading(true);
     setTopUpResult(null);
     try {
+      // If only community-authenticated, need to pair HashConnect for transaction signing
+      if (!wallet.isConnected) {
+        setTopUpResult({ success: false, message: "Connecting wallet for transaction signing..." });
+        await wallet.connect();
+        setTopUpLoading(false);
+        return; // User retries after pairing
+      }
+
       // Step 1: Send HBAR from user's wallet to operator via HashPack
       setTopUpResult({ success: false, message: "Approve the transaction in HashPack..." });
       const txResult = await wallet.sendHbar(OPERATOR_ACCOUNT_ID, amount);
@@ -156,7 +173,7 @@ export default function ProfilePage() {
         body: JSON.stringify({
           agentId,
           paymentTxId: txResult.transactionId,
-          payerAccountId: wallet.accountId,
+          payerAccountId: wallet.accountId || walletAccountId,
         }),
       });
       const data = await res.json();
@@ -579,11 +596,16 @@ export default function ProfilePage() {
                   Cancel
                 </button>
                 <button
-                  disabled={arbiterLoading || Number(arbiterAmount) < 10 || !wallet.isConnected}
+                  disabled={arbiterLoading || Number(arbiterAmount) < 10 || (!wallet.isConnected && !userWallet)}
                   onClick={async () => {
                     const agent = agents.find(a => a.agentId === arbiterAgent);
                     if (!agent?.apiKey) { setArbiterResult({ success: false, message: 'No API key found' }); return; }
-                    if (!wallet.isConnected) { setArbiterResult({ success: false, message: 'Wallet not connected' }); return; }
+                    if (!wallet.isConnected && !userWallet) { setArbiterResult({ success: false, message: 'Wallet not connected' }); return; }
+                    if (!wallet.isConnected) {
+                      try { await wallet.connect(); } catch { setArbiterResult({ success: false, message: 'Please connect your wallet' }); }
+                      setArbiterLoading(false);
+                      return;
+                    }
 
                     // Check if already staked as arbiter
                     if (agent.arbiterEligible || (agent.arbiterStakeHbar || 0) >= 10) {
