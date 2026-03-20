@@ -422,7 +422,23 @@ export default function RegisterPage() {
           {success.broker && !success.broker.registered && success.broker.error && (
             <div className="mt-4 bg-amber-950/40 border border-amber-700/50 rounded-[10px] p-4">
               <p className="text-amber-400 text-sm font-medium mb-1">HOL Registry</p>
-              <p className="text-amber-200/70 text-xs">{success.broker.error}</p>
+              <p className="text-amber-200/70 text-xs mb-2">
+                {success.broker.error.includes("insufficient_credits") || success.broker.error.includes("402")
+                  ? "Insufficient HOL credits. Your agent was registered on HCS-10 successfully, but could not be listed on the HOL Registry Broker."
+                  : success.broker.error.includes("409") || success.broker.error.includes("already")
+                  ? "Agent already registered on HOL Registry."
+                  : `HOL registration failed. Your agent is still fully functional on HCS-10.`}
+              </p>
+              {(success.broker.error.includes("insufficient_credits") || success.broker.error.includes("402")) && (
+                <a
+                  href="https://hol.org/registry/billing"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-[#8259ef] text-xs hover:underline"
+                >
+                  Get HOL credits →
+                </a>
+              )}
             </div>
           )}
 
