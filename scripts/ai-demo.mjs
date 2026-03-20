@@ -165,6 +165,9 @@ async function showMenu() {
   ║  ${c.green}7.${c.reset} Resolve Dispute (Arbiter)              ║
   ║     ${c.gray}Arbiter votes on a dispute${c.reset}               ║
   ║                                            ║
+  ║  ${c.green}8.${c.reset} Talk to an Agent                       ║
+  ║     ${c.gray}Chat with an AI agent via HCS-10${c.reset}         ║
+  ║                                            ║
   ║  ${c.red}0.${c.reset} Exit                                   ║
   ${c.purple}${c.bold}╚════════════════════════════════════════════╝${c.reset}
 `);
@@ -811,6 +814,109 @@ Reply ONLY with: {"upheld": true/false, "reasoning": "<one sentence>"}`
 }
 
 // ============================================================
+// SCENARIO 8: Talk to an Agent (interactive chat)
+// ============================================================
+async function scenarioTalkToAgent() {
+  divider('TALK TO AN AGENT');
+  console.log(`  ${c.gray}Chat with an AI agent via HCS-10. Type your messages and the agent responds.${c.reset}`);
+  console.log(`  ${c.gray}Type "exit" or "quit" to end the conversation.${c.reset}\n`);
+
+  const agent = await selectAgent('Select agent to talk to:');
+
+  // Set up connection topic
+  log('HCS-10', c.cyan, `Setting up connection with ${agent.name}...`);
+  let connectionTopicId = null;
+
+  // Use operator account as the "user" identity
+  const userId = process.env.HEDERA_OPERATOR_ID || '0.0.5989261';
+
+  try {
+    const connRes = await api(`/connections/${agent.agentId}`);
+    const conn = connRes.connections?.find(c => c.fromAgentId === userId || c.toAgentId === userId);
+    if (conn && conn.connectionTopicId && !conn.connectionTopicId.startsWith('seed-')) {
+      connectionTopicId = conn.connectionTopicId;
+      log('✓', c.green, `Existing connection found — Topic: ${c.gray}${connectionTopicId}${c.reset}`);
+    }
+  } catch (e) {}
+
+  if (!connectionTopicId) {
+    try {
+      const res = await api('/connections/seed', {
+        method: 'POST',
+        body: JSON.stringify({ fromAgentId: userId, toAgentId: agent.agentId }),
+      });
+      connectionTopicId = res.connection?.connectionTopicId || res.connectionTopicId;
+      if (connectionTopicId && !connectionTopicId.startsWith('seed-') && !connectionTopicId.startsWith('local-')) {
+        log('✓', c.green, `HCS-10 connection created — Topic: ${c.gray}${connectionTopicId}${c.reset}`);
+      }
+    } catch (e) {
+      log('⚠', c.yellow, 'Could not create connection topic');
+    }
+  }
+
+  console.log(`\n  ${c.purple}${c.bold}Connected to ${agent.name}${c.reset} ${c.gray}(${agent.model})${c.reset}`);
+  console.log(`  ${c.gray}─────────────────────────────────────────${c.reset}\n`);
+
+  const chatHistory = [];
+
+  while (true) {
+    const userMessage = await ask(`  ${c.green}${c.bold}You:${c.reset} `);
+
+    if (!userMessage.trim() || userMessage.toLowerCase() === 'exit' || userMessage.toLowerCase() === 'quit') {
+      console.log(`\n  ${c.gray}Chat ended.${c.reset}`);
+      break;
+    }
+
+    // Log user message to HCS
+    if (connectionTopicId) {
+      try {
+        await api('/connections/message', {
+          method: 'POST',
+          body: JSON.stringify({ connectionTopicId, message: userMessage, sender: userId }),
+        });
+        log('HCS', c.gray, `Your message logged to topic ${connectionTopicId}`);
+      } catch (e) {}
+    }
+
+    // Build context for the agent
+    chatHistory.push({ role: 'user', content: userMessage });
+
+    const contextMessages = chatHistory.slice(-10).map(m =>
+      `${m.role === 'user' ? 'User' : agent.name}: ${m.content}`
+    ).join('\n');
+
+    log(agent.name, agent.color, `${c.dim}Thinking...${c.reset}`);
+    const response = await aiChat(agent.model, agent.systemPrompt,
+      `You are ${agent.name}. A user is talking to you. Here is the conversation so far:\n\n${contextMessages}\n\nRespond naturally and helpfully. Keep responses concise.`);
+
+    chatHistory.push({ role: 'assistant', content: response });
+
+    console.log(`\n  ${agent.color}${c.bold}  ${agent.name}:${c.reset}`);
+    response.split('\n').forEach(line => console.log(`  ${c.white}  ${line}${c.reset}`));
+    console.log();
+
+    // Log agent response to HCS
+    if (connectionTopicId) {
+      try {
+        await api('/connections/message', {
+          method: 'POST', headers: { 'X-Agent-Key': agent.apiKey },
+          body: JSON.stringify({ connectionTopicId, message: response, sender: agent.agentId }),
+        });
+        log('HCS', c.gray, `${agent.name}'s response logged to topic ${connectionTopicId}`);
+      } catch (e) {}
+    }
+  }
+
+  // Show verification link
+  if (connectionTopicId) {
+    console.log(`\n  ${c.purple}${c.bold}Verify conversation on HashScan:${c.reset}`);
+    console.log(`  ${c.cyan}https://hashscan.io/testnet/topic/${connectionTopicId}${c.reset}\n`);
+  }
+
+  console.log(`  ${c.gray}Messages exchanged: ${chatHistory.length}${c.reset}`);
+}
+
+// ============================================================
 // MAIN
 // ============================================================
 async function main() {
@@ -847,6 +953,10 @@ async function main() {
         break;
       case '7':
         await scenarioResolveDispute();
+        await waitForEnter('Press ENTER to return to menu...');
+        break;
+      case '8':
+        await scenarioTalkToAgent();
         await waitForEnter('Press ENTER to return to menu...');
         break;
       case '0':

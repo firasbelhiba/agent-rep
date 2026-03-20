@@ -136,6 +136,8 @@ export default function ConnectionsPage() {
 
   // Select an agent to chat with
   const selectAgent = async (agent: AgentEntry) => {
+    // Clear previous messages immediately when switching agents
+    setMessages([]);
     setSelectedAgent(agent);
     const topicId = findConnectionTopic(agent.agent.agentId);
     setActiveTopicId(topicId);
@@ -359,23 +361,26 @@ export default function ConnectionsPage() {
                       <>
                         {messages.map((msg, i) => {
                           const { text, sender } = formatMessageData(msg.data);
+                          // Determine if the message is from the selected agent or the other party
+                          const selectedId = selectedAgent.agent.agentId;
+                          const isFromSelected = sender === selectedId || sender === selectedAgent.agent.name;
                           const isUser = sender === "user";
-                          const isAgent = !isUser;
-                          const displayName = isUser ? "You" : selectedAgent.agent.name;
+                          const isOtherSide = isUser || !isFromSelected;
+                          const displayName = isUser ? "You" : isFromSelected ? selectedAgent.agent.name : (sender ? getAgentName(sender) : "Other Agent");
 
                           return (
                             <div
                               key={i}
-                              className={`flex ${isAgent ? "justify-start" : "justify-end"}`}
+                              className={`flex ${isFromSelected ? "justify-start" : "justify-end"}`}
                             >
                               <div
                                 className={`max-w-[75%] rounded-[12px] px-4 py-3 ${
-                                  isAgent
+                                  isFromSelected
                                     ? "bg-white/[0.05] border border-white/[0.08]"
                                     : "bg-[#8259ef]/20 border border-[#8259ef]/30"
                                 }`}
                               >
-                                <div className={`text-[10px] font-medium mb-1 ${isAgent ? "text-[#b47aff]" : "text-[#c9a5ff]"}`}>
+                                <div className={`text-[10px] font-medium mb-1 ${isFromSelected ? "text-[#b47aff]" : "text-[#c9a5ff]"}`}>
                                   {displayName}
                                 </div>
                                 <p className="text-sm text-white leading-relaxed break-words">
