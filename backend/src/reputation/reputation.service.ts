@@ -116,7 +116,7 @@ export class ReputationService {
         ? feedback.reduce((s, f) => s + Number(f.value) / Math.pow(10, f.valueDecimals || 0), 0) / feedbackCount
         : 0;
     const normalizedFeedback = simpleAvg / 100;
-    const feedbackConfidence = Math.min(1, feedbackCount / 5);
+    const feedbackConfidence = Math.min(1, feedbackCount / 10);
     const qualityScore = normalizedFeedback * 300 * feedbackConfidence;
 
     const validationCount = responses.length;
@@ -234,8 +234,9 @@ export class ReputationService {
     }
 
     // Quality from feedback: map 0..100 to 0..300 (weight: 30%)
+    // Confidence ramps slowly: need 10 feedbacks for full confidence (not 5)
     const normalizedFeedback = averageFeedbackValue / 100;
-    const feedbackConfidence = Math.min(1, feedbackCount / 5);
+    const feedbackConfidence = Math.min(1, feedbackCount / 10);
     const qualityScore = Math.round(normalizedFeedback * 300 * feedbackConfidence);
 
     // Reliability from validations: map 0..100 to 0..300 (weight: 30%)
@@ -250,6 +251,7 @@ export class ReputationService {
 
     // Consistency bonus (weight: 20%) - low variance = higher score
     // ERC-8004: normalize values with valueDecimals
+    // Also requires confidence ramp — consistency with few feedbacks shouldn't give full 200
     const values = feedback.map((f) => Number(f.value) / Math.pow(10, f.valueDecimals || 0));
     let consistencyScore = 0;
     if (values.length >= 3) {
@@ -257,10 +259,13 @@ export class ReputationService {
       const variance =
         values.reduce((sum, v) => sum + (v - mean) ** 2, 0) / values.length;
       const stddev = Math.sqrt(variance);
-      const maxStddev = 100;
-      consistencyScore = Math.round((1 - stddev / maxStddev) * 200);
+      const maxStddev = 50; // stricter: stddev of 50 = 0 consistency
+      const rawConsistency = Math.max(0, (1 - stddev / maxStddev) * 200);
+      // Confidence ramp: need 10 feedbacks for full consistency score
+      const consistencyConfidence = Math.min(1, values.length / 10);
+      consistencyScore = Math.round(rawConsistency * consistencyConfidence);
     } else if (values.length > 0) {
-      consistencyScore = 50;
+      consistencyScore = 10;
     }
 
     const overallScore = Math.min(

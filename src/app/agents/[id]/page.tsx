@@ -644,7 +644,7 @@ export default function AgentDetailPage({
 
                 <div>
                   <span className="text-xs text-[#9b9b9d] block mb-1">Registered</span>
-                  <span className="text-sm text-gray-300">{new Date(agent.createdAt).toLocaleDateString()}</span>
+                  <span className="text-sm text-gray-300">{(() => { const d = new Date(Number(agent.createdAt) || agent.createdAt); return isNaN(d.getTime()) ? 'N/A' : d.toLocaleDateString(); })()}</span>
                 </div>
 
                 {agent.model && (
