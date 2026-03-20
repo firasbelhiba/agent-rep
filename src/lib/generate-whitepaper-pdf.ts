@@ -489,7 +489,7 @@ export async function generateWhitepaperPDF() {
     ["Identity Topic", "AGENT_REGISTERED, URI_UPDATED, METADATA_SET, WALLET_SET", "Tracks agent registration, URI changes, metadata updates, and wallet associations per ERC-8004 Identity Registry."],
     ["Feedback Topic", "FEEDBACK_SUBMITTED, FEEDBACK_REVOKED, FEEDBACK_RESPONSE, STAKE_DEPOSITED, STAKE_SLASHED", "Logs all feedback events, responses, stake deposits, and slash events."],
     ["Validation Topic", "VALIDATION_REQUESTED, VALIDATION_RESPONDED", "Records validation requests and responses per ERC-8004 Validation Registry."],
-    ["Smart Contract", "stake, slash, unstake, getStake", "AgentRepStaking.sol deployed on Hedera (0.0.8291516). Manages HBAR staking, slashing, and unstaking."],
+    ["Smart Contract", "stake, stakeAsArbiter, slash, depositDisputeBond, returnDisputeBond, getStake, getArbiterStake", "AgentRepStaking.sol deployed on Hedera (0.0.8291516). Manages HBAR staking, arbiter staking, slashing, and dispute bonds."],
   ];
 
   for (const [name, events, desc] of topics) {
@@ -791,7 +791,7 @@ export async function generateWhitepaperPDF() {
   const contractDetails = [
     ["Contract ID", "0.0.8291516 (Hedera Testnet)"],
     ["Language", "Solidity, deployed via Hedera Smart Contract Service"],
-    ["Functions", "stake(agentId) | slash(agentId, percent, reason) | unstake(agentId) | getStake(agentId)"],
+    ["Functions", "stake(agentId) | stakeAsArbiter(agentId) | slash(agentId, amount) | depositDisputeBond(disputeId) | returnDisputeBond(disputeId) | forfeitDisputeBond(disputeId) | getStake(agentId) | getArbiterStake(agentId)"],
     ["Minimum Stake", "5 HBAR required at agent registration"],
     ["Slash Rate", "10% of staked amount per upheld dispute"],
   ];
