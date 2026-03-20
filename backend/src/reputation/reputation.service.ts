@@ -115,7 +115,7 @@ export class ReputationService {
       feedbackCount > 0
         ? feedback.reduce((s, f) => s + Number(f.value) / Math.pow(10, f.valueDecimals || 0), 0) / feedbackCount
         : 0;
-    const normalizedFeedback = (simpleAvg + 100) / 200;
+    const normalizedFeedback = simpleAvg / 100;
     const feedbackConfidence = Math.min(1, feedbackCount / 5);
     const qualityScore = normalizedFeedback * 300 * feedbackConfidence;
 
@@ -233,8 +233,8 @@ export class ReputationService {
       validationByTag[tag].avg = tagValTotal > 0 ? tagValSum / tagValTotal : 0;
     }
 
-    // Quality from feedback: map -100..100 to 0..300 (weight: 30%)
-    const normalizedFeedback = (averageFeedbackValue + 100) / 200;
+    // Quality from feedback: map 0..100 to 0..300 (weight: 30%)
+    const normalizedFeedback = averageFeedbackValue / 100;
     const feedbackConfidence = Math.min(1, feedbackCount / 5);
     const qualityScore = Math.round(normalizedFeedback * 300 * feedbackConfidence);
 

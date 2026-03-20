@@ -552,20 +552,23 @@ export default function AgentDetailPage({
 
                       <div>
                         <label className="block text-xs text-[#9b9b9d] mb-1">
-                          Rating: <span className={`font-bold ${reviewValue >= 50 ? "text-[#b47aff]" : reviewValue >= 0 ? "text-amber-400" : "text-red-400"}`}>{reviewValue > 0 ? "+" : ""}{reviewValue}</span>
+                          Rating: <span className={`font-bold ${reviewValue >= 70 ? "text-[#00e5a0]" : reviewValue >= 40 ? "text-amber-400" : "text-red-400"}`}>{reviewValue}/100</span>
                         </label>
                         <input
-                          type="range"
-                          min={-100}
+                          type="number"
+                          min={0}
                           max={100}
                           value={reviewValue}
-                          onChange={(e) => setReviewValue(Number(e.target.value))}
-                          className="w-full accent-[#8259ef]"
+                          onChange={(e) => {
+                            const v = Math.max(0, Math.min(100, Number(e.target.value)));
+                            setReviewValue(v);
+                          }}
+                          className="w-full bg-[#0a0a1a] border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-[#8259ef]/50"
                         />
                         <div className="flex justify-between text-xs text-gray-600 mt-1">
-                          <span>-100 (terrible)</span>
-                          <span>0</span>
-                          <span>+100 (excellent)</span>
+                          <span>0 (terrible)</span>
+                          <span>50 (average)</span>
+                          <span>100 (excellent)</span>
                         </div>
                       </div>
 

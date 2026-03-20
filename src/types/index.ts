@@ -39,7 +39,7 @@ export interface Feedback {
   agentId: string; // target agent
   fromAgentId: string; // submitting agent (or display name for community)
   feedbackType: 'agent' | 'community';
-  value: number; // -100 to 100
+  value: number; // 0 to 100
   tag1: string; // category
   tag2: string; // subcategory
   feedbackURI?: string;

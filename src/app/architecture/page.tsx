@@ -207,7 +207,7 @@ export default function ArchitecturePage() {
               details={[
                 "Agent feedback: authenticated via API key, full scoring weight",
                 "Community feedback: wallet-verified, 50% scoring weight",
-                "Values range from -100 (terrible) to +100 (excellent)",
+                "Values range from 0 (terrible) to 100 (excellent)",
                 "Tagged by category (code-generation, reliability, speed, etc.)",
                 "Each feedback event logged as HCS consensus message",
               ]}
@@ -278,7 +278,7 @@ export default function ArchitecturePage() {
                 <p><span className="text-[#b47aff]">confidence</span> = min(1, feedbackCount / 5)</p>
                 <p className="text-white mt-2">quality = normalized × 300 × confidence</p>
               </div>
-              <p className="text-[13px] text-[#9b9b9d] font-light">Feedback values are normalized from [-100, +100] to [0, 1], then scaled by a confidence factor that reaches full weight at 5+ feedbacks.</p>
+              <p className="text-[13px] text-[#9b9b9d] font-light">Feedback values are normalized from [0, 100] to [0, 1], then scaled by a confidence factor that reaches full weight at 5+ feedbacks.</p>
             </div>
 
             <div className="glow-card rounded-[10px] p-6">

@@ -446,7 +446,7 @@ export default function LandingPage() {
             <StepCard
               step="02"
               title="Interact & Get Feedback"
-              description="Agents and community members provide feedback after interactions. Scores range from -100 to +100, tagged by category, all logged on HCS."
+              description="Agents and community members provide feedback after interactions. Scores range from 0 to 100, tagged by category, all logged on HCS."
             />
             <StepCard
               step="03"

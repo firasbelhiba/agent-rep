@@ -212,7 +212,7 @@ export class StakingController {
           if (topics.feedback) {
             disputeHcsSequence = await this.hcsService.logInteraction(
               topics.feedback,
-              HCSMessageType.STAKE_SLASHED, // reuse closest type
+              HCSMessageType.DISPUTE_FILED,
               {
                 type: 'DISPUTE_FILED',
                 disputeId: dispute.id,
@@ -310,7 +310,7 @@ export class StakingController {
           try {
             hcsSequenceNumber = await this.hcsService.logInteraction(
               topics.feedback,
-              HCSMessageType.STAKE_SLASHED,
+              HCSMessageType.DISPUTE_RESOLVED,
               {
                 type: body.upheld ? 'DISPUTE_UPHELD' : 'DISPUTE_DISMISSED',
                 disputeId: dispute.id,
