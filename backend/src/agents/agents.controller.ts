@@ -259,8 +259,10 @@ export class AgentsController {
           balanceHbar,
           stakeHbar: stakeHbar + arbiterStakeHbar,
           arbiterStakeHbar,
-          operatingBalanceTinybar: balanceTinybar || Number(agent.operatingBalance) || 0,
-          operatingBalanceHbar: balanceTinybar ? balanceTinybar / 100_000_000 : (Number(agent.operatingBalance) || 0) / 100_000_000,
+          walletBalanceTinybar: balanceTinybar,
+          walletBalanceHbar: balanceHbar,
+          operatingBalanceTinybar: Number(agent.operatingBalance) || 0,
+          operatingBalanceHbar: (Number(agent.operatingBalance) || 0) / 100_000_000,
           apiKey: agent.apiKey || null,
           hashScanUrl: accountId
             ? `https://hashscan.io/${network}/account/${accountId}`
