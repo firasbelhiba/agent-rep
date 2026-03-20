@@ -761,27 +761,47 @@ export default function AgentDetailPage({
                   <div className="mt-4 pt-4 border-t border-white/[0.06]">
                     <h4 className="text-sm font-medium text-[#9b9b9d] mb-2">Disputes ({disputes.length})</h4>
                     <div className="space-y-2">
-                      {disputes.slice(0, 3).map((d: any) => (
-                        <div key={d.id} className="bg-white/[0.03] border border-white/[0.06] rounded-lg px-3 py-2">
-                          <div className="flex items-center justify-between mb-1">
-                            <span className={`text-xs px-1.5 py-0.5 rounded border ${
-                              d.status === 'upheld' ? 'bg-red-950 text-red-400 border-red-800' :
-                              d.status === 'dismissed' ? 'bg-emerald-950 text-emerald-400 border-emerald-800' :
-                              'bg-amber-950 text-amber-400 border-amber-800'
-                            }`}>{d.status}</span>
+                      {disputes.slice(0, 5).map((d: any) => (
+                        <div key={d.id} className="bg-white/[0.03] border border-white/[0.06] rounded-lg px-3 py-2.5">
+                          <div className="flex items-center justify-between mb-1.5">
+                            <div className="flex items-center gap-2">
+                              <span className="text-xs text-gray-500">#{d.id}</span>
+                              <span className={`text-xs px-1.5 py-0.5 rounded border font-medium ${
+                                d.status === 'upheld' ? 'bg-red-950 text-red-400 border-red-800' :
+                                d.status === 'dismissed' ? 'bg-emerald-950 text-emerald-400 border-emerald-800' :
+                                d.status === 'voting' ? 'bg-amber-950 text-amber-400 border-amber-800' :
+                                'bg-gray-900 text-gray-400 border-gray-700'
+                              }`}>{d.status === 'upheld' ? '✓ Upheld' : d.status === 'dismissed' ? '✗ Dismissed' : d.status === 'voting' ? '⏳ Voting' : d.status}</span>
+                            </div>
                             {d.slashAmount > 0 && (
-                              <span className="text-xs text-red-400">-{(d.slashAmount / 100_000_000).toFixed(1)} HBAR</span>
+                              <span className="text-xs text-red-400 font-medium">-{(d.slashAmount / 100_000_000).toFixed(1)} HBAR slashed</span>
+                            )}
+                            {d.bondAmount > 0 && d.slashAmount <= 0 && (
+                              <span className="text-xs text-amber-400">{(d.bondAmount / 100_000_000).toFixed(0)} HBAR bond</span>
                             )}
                           </div>
-                          <p className="text-xs text-[#9b9b9d] truncate">{d.reason}</p>
-                          <div className="flex items-center gap-2 mt-1 text-xs text-gray-600">
-                            <span>{timeAgo(d.createdAt)}</span>
-                            {d.hcsSequenceNumber && hcsTopics.feedback && (
-                              <a href={`https://hashscan.io/testnet/topic/${hcsTopics.feedback}/message/${d.hcsSequenceNumber}`} target="_blank" rel="noopener noreferrer" className="text-[#8259ef] hover:text-[#b47aff] flex items-center gap-1">
-                                <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
-                                HCS Proof
-                              </a>
+                          <p className="text-xs text-white/80 mb-1">{d.reason}</p>
+                          <div className="text-xs text-gray-500 space-y-0.5">
+                            <div className="flex items-center gap-3">
+                              <span>Filed by: <span className="text-[#8259ef]">{agentNames[d.disputerId] || d.disputerId}</span></span>
+                              <span>Against: <span className="text-amber-400">{agentNames[d.accusedId] || d.accusedId}</span></span>
+                            </div>
+                            {d.resolvedBy && (
+                              <div>Arbiter: <span className="text-emerald-400">{agentNames[d.resolvedBy] || d.resolvedBy}</span></div>
                             )}
+                            {d.resolutionNotes && (
+                              <div className="text-gray-600 italic truncate">Resolution: {d.resolutionNotes}</div>
+                            )}
+                            <div className="flex items-center gap-2 mt-1">
+                              <span>{timeAgo(d.createdAt)}</span>
+                              {d.resolvedAt && <span>Resolved: {timeAgo(d.resolvedAt)}</span>}
+                              {d.hcsSequenceNumber && hcsTopics.feedback && (
+                                <a href={`https://hashscan.io/testnet/topic/${hcsTopics.feedback}/message/${d.hcsSequenceNumber}`} target="_blank" rel="noopener noreferrer" className="text-[#8259ef] hover:text-[#b47aff] flex items-center gap-1">
+                                  <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
+                                  HCS Proof
+                                </a>
+                              )}
+                            </div>
                           </div>
                         </div>
                       ))}

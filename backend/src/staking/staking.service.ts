@@ -3,6 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { StakeEntity } from './stake.entity';
 import { DisputeEntity } from './dispute.entity';
+import { FeedbackEntity } from '../feedback/feedback.entity';
 import { StakingContractService } from '../hedera/staking-contract.service';
 
 // Minimum stake required to give feedback (1 HBAR in tinybars)
@@ -41,6 +42,8 @@ export class StakingService {
     private readonly stakeRepo: Repository<StakeEntity>,
     @InjectRepository(DisputeEntity)
     private readonly disputeRepo: Repository<DisputeEntity>,
+    @InjectRepository(FeedbackEntity)
+    private readonly feedbackRepo: Repository<FeedbackEntity>,
     private readonly stakingContract: StakingContractService,
   ) {}
 
@@ -470,6 +473,9 @@ export class StakingService {
         }
       }
 
+      // Revoke the disputed feedback so it's excluded from reputation
+      await this.revokeFeedback(dispute.feedbackId);
+
       // Penalize validators who confirmed the bad feedback
       await this.penalizeValidatorsForBadFeedback(dispute.feedbackId);
 
@@ -600,6 +606,9 @@ export class StakingService {
       txId = result.txId;
       dispute.slashAmount = Math.floor(Number(slashedStake.balance) * SLASH_PERCENT / 100);
 
+      // Revoke the disputed feedback so it's excluded from reputation
+      await this.revokeFeedback(dispute.feedbackId);
+
       // Return dispute bond to disputer
       if (this.stakingContract.isConfigured() && dispute.bondAmount > 0) {
         try {
@@ -651,5 +660,20 @@ export class StakingService {
    */
   isContractActive(): boolean {
     return this.stakingContract.isConfigured();
+  }
+
+  /**
+   * Revoke a feedback entry when a dispute is upheld.
+   * Sets isRevoked=true so it's excluded from reputation calculations.
+   */
+  private async revokeFeedback(feedbackId: string): Promise<void> {
+    const feedback = await this.feedbackRepo.findOne({ where: { feedbackId } });
+    if (!feedback) {
+      this.logger.warn(`Cannot revoke feedback ${feedbackId}: not found`);
+      return;
+    }
+    feedback.isRevoked = true;
+    await this.feedbackRepo.save(feedback);
+    this.logger.log(`Feedback ${feedbackId} revoked (dispute upheld) — excluded from reputation for agent ${feedback.agentId}`);
   }
 }
