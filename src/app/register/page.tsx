@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { API_URL } from "@/lib/api";
 import { Navbar } from "@/components/ui/Navbar";
-import { useWallet } from "@/hooks/useWallet";
+import { useWalletContext } from "@/context/WalletContext";
 
 const PREDEFINED_SKILLS = [
   "code-generation",
@@ -59,7 +59,7 @@ const STAGE_ORDER = [
 
 export default function RegisterPage() {
   const router = useRouter();
-  const wallet = useWallet();
+  const wallet = useWalletContext();
 
   // Check if community user is logged in with a verified wallet
   const [communityWallet, setCommunityWallet] = useState<string | null>(null);

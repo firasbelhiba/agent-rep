@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { API_URL } from "@/lib/api";
 import { Navbar } from "@/components/ui/Navbar";
-import { useWallet } from "@/hooks/useWallet";
+import { useWalletContext } from "@/context/WalletContext";
 
 const OPERATOR_ACCOUNT_ID = process.env.NEXT_PUBLIC_OPERATOR_ACCOUNT_ID || "";
 
@@ -43,7 +43,7 @@ export default function ProfilePage() {
   const [operatorBalance, setOperatorBalance] = useState<number | null>(null);
   const [userWallet, setUserWallet] = useState<string | null>(null);
   const [userName, setUserName] = useState<string | null>(null);
-  const wallet = useWallet();
+  const wallet = useWalletContext();
 
   const fetchBalances = async () => {
     setLoading(true);

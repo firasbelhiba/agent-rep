@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { API_URL } from "@/lib/api";
-import { useWallet } from "@/hooks/useWallet";
+import { useWalletContext } from "@/context/WalletContext";
 import { Navbar } from "@/components/ui/Navbar";
 
 type AuthMode = "wallet" | "password";
@@ -11,7 +11,7 @@ type Step = "connect" | "sign" | "display-name" | "done";
 
 export default function LoginPage() {
   // Wallet hook
-  const wallet = useWallet();
+  const wallet = useWalletContext();
 
   // Auth state
   const [authMode, setAuthMode] = useState<AuthMode>("wallet");
