@@ -168,6 +168,9 @@ async function showMenu() {
   ║  ${c.green}8.${c.reset} Talk to an Agent                       ║
   ║     ${c.gray}Chat with an AI agent via HCS-10${c.reset}         ║
   ║                                            ║
+  ║  ${c.green}9.${c.reset} Agent Listener (UI responder)          ║
+  ║     ${c.gray}Agent auto-replies to UI messages${c.reset}        ║
+  ║                                            ║
   ║  ${c.red}0.${c.reset} Exit                                   ║
   ${c.purple}${c.bold}╚════════════════════════════════════════════╝${c.reset}
 `);
@@ -917,6 +920,132 @@ async function scenarioTalkToAgent() {
 }
 
 // ============================================================
+// SCENARIO 9: Agent Listener (auto-reply to UI messages)
+// ============================================================
+async function scenarioAgentListener() {
+  divider('AGENT LISTENER');
+  console.log(`  ${c.gray}The agent will listen for messages from the UI and auto-reply using AI.${c.reset}`);
+  console.log(`  ${c.gray}Go to agentrep.xyz/connections, click on the agent, and send a message.${c.reset}`);
+  console.log(`  ${c.yellow}Press Ctrl+C to stop listening.${c.reset}\n`);
+
+  const agent = await selectAgent('Select agent to listen as:');
+
+  // Find all connection topics for this agent
+  let connectionTopics = [];
+  try {
+    const connRes = await api(`/connections/${agent.agentId}`);
+    const conns = (connRes.connections || []).filter(c =>
+      c.status === 'active' && c.connectionTopicId && !c.connectionTopicId.startsWith('seed-')
+    );
+    connectionTopics = conns.map(c => ({
+      topicId: c.connectionTopicId,
+      peerId: c.fromAgentId === agent.agentId ? c.toAgentId : c.fromAgentId,
+    }));
+  } catch (e) {
+    log('✗', c.red, 'Failed to fetch connections');
+    return;
+  }
+
+  if (connectionTopics.length === 0) {
+    log('⚠', c.yellow, 'No active connections found. Run a conversation first (option 1) or send a message from the UI.');
+    return;
+  }
+
+  log('✓', c.green, `Listening on ${connectionTopics.length} connection topic(s):`);
+  connectionTopics.forEach(ct => {
+    log('  ', c.gray, `Topic: ${ct.topicId} (peer: ${ct.peerId})`);
+  });
+  console.log(`\n  ${c.purple}${c.bold}Waiting for messages...${c.reset}\n`);
+
+  // Track last seen sequence number per topic
+  const lastSeen = {};
+  for (const ct of connectionTopics) {
+    try {
+      const msgRes = await api(`/connections/messages/${ct.topicId}`);
+      const msgs = msgRes.messages || [];
+      lastSeen[ct.topicId] = msgs.length > 0 ? Math.max(...msgs.map(m => m.sequenceNumber || 0)) : 0;
+    } catch {
+      lastSeen[ct.topicId] = 0;
+    }
+  }
+
+  // Poll loop
+  let running = true;
+  process.on('SIGINT', () => { running = false; });
+
+  while (running) {
+    for (const ct of connectionTopics) {
+      try {
+        const msgRes = await api(`/connections/messages/${ct.topicId}`);
+        const msgs = (msgRes.messages || []).sort((a, b) => (a.sequenceNumber || 0) - (b.sequenceNumber || 0));
+
+        // Find new messages not from this agent
+        const newMsgs = msgs.filter(m => {
+          if ((m.sequenceNumber || 0) <= (lastSeen[ct.topicId] || 0)) return false;
+          const parsed = typeof m.data === 'string' ? (() => { try { return JSON.parse(m.data); } catch { return { sender: '' }; } })() : (m.data || {});
+          const sender = parsed.sender || '';
+          return sender !== agent.agentId && sender !== agent.name;
+        });
+
+        for (const msg of newMsgs) {
+          const parsed = typeof msg.data === 'string' ? (() => { try { return JSON.parse(msg.data); } catch { return { data: msg.data, sender: 'user' }; } })() : (msg.data || {});
+          const text = parsed.data || parsed.message || String(msg.data);
+          const sender = parsed.sender || 'user';
+          const senderName = agents.find(a => a.agentId === sender)?.name || sender;
+
+          log('📩', c.cyan, `New message from ${c.bold}${senderName}${c.reset}: "${c.white}${text}${c.reset}"`);
+
+          // Generate AI response
+          log(agent.name, agent.color, `${c.dim}Thinking...${c.reset}`);
+
+          // Fetch recent conversation context
+          const recentMsgs = msgs.slice(-6).map(m => {
+            const p = typeof m.data === 'string' ? (() => { try { return JSON.parse(m.data); } catch { return { data: m.data, sender: '' }; } })() : (m.data || {});
+            const s = p.sender || '';
+            const t = p.data || p.message || String(m.data);
+            const name = s === agent.agentId ? agent.name : (agents.find(a => a.agentId === s)?.name || s || 'User');
+            return `${name}: ${t}`;
+          }).join('\n');
+
+          const response = await aiChat(agent.model, agent.systemPrompt,
+            `You are ${agent.name}. Someone is talking to you via HCS-10. Here is the recent conversation:\n\n${recentMsgs}\n\nRespond naturally and helpfully. Keep responses concise (2-3 sentences).`);
+
+          console.log(`\n  ${agent.color}${c.bold}  ${agent.name}:${c.reset}`);
+          response.split('\n').forEach(line => console.log(`  ${c.white}  ${line}${c.reset}`));
+          console.log();
+
+          // Post response to HCS
+          try {
+            await api('/connections/message', {
+              method: 'POST',
+              headers: { 'X-Agent-Key': agent.apiKey },
+              body: JSON.stringify({ connectionTopicId: ct.topicId, message: response, sender: agent.agentId }),
+            });
+            log('HCS', c.gray, `Response posted to topic ${ct.topicId}`);
+          } catch (e) {
+            log('⚠', c.yellow, `Failed to post response: ${e.message}`);
+          }
+
+          lastSeen[ct.topicId] = msg.sequenceNumber || (lastSeen[ct.topicId] + 1);
+        }
+
+        // Update last seen even if no new messages
+        if (msgs.length > 0) {
+          lastSeen[ct.topicId] = Math.max(lastSeen[ct.topicId], Math.max(...msgs.map(m => m.sequenceNumber || 0)));
+        }
+      } catch (e) {
+        // Silent retry
+      }
+    }
+
+    // Poll every 3 seconds
+    if (running) await new Promise(r => setTimeout(r, 3000));
+  }
+
+  console.log(`\n  ${c.gray}Listener stopped.${c.reset}`);
+}
+
+// ============================================================
 // MAIN
 // ============================================================
 async function main() {
@@ -957,6 +1086,10 @@ async function main() {
         break;
       case '8':
         await scenarioTalkToAgent();
+        await waitForEnter('Press ENTER to return to menu...');
+        break;
+      case '9':
+        await scenarioAgentListener();
         await waitForEnter('Press ENTER to return to menu...');
         break;
       case '0':
