@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import ReactDOM from "react-dom";
 import Link from "next/link";
 import { API_URL } from "@/lib/api";
 import { Navbar } from "@/components/ui/Navbar";
@@ -99,37 +100,40 @@ export default function LandingPage() {
     : 0;
 
   return (
-    <div className="min-h-screen bg-black text-white overflow-hidden">
-      <Navbar />
-
-      {/* Render sleep mode notice */}
-      {mounted && showRenderNotice && (
-        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/70 backdrop-blur-sm" style={{position:'fixed',top:0,left:0,right:0,bottom:0}}>
-          <div className="bg-[#1a1a2e] border border-[#8259ef]/30 rounded-2xl p-8 max-w-md mx-4 shadow-2xl">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="w-10 h-10 rounded-full bg-amber-500/20 flex items-center justify-center">
-                <span className="text-amber-400 text-xl">⏳</span>
+    <>
+      {/* Render sleep mode notice - OUTSIDE overflow-hidden container */}
+      {mounted && showRenderNotice && ReactDOM.createPortal(
+        <div style={{position:'fixed',top:0,left:0,width:'100vw',height:'100vh',zIndex:99999,display:'flex',alignItems:'center',justifyContent:'center',background:'rgba(0,0,0,0.8)',backdropFilter:'blur(8px)'}}>
+          <div style={{background:'#2a2a4e',border:'2px solid #8259ef',borderRadius:'16px',padding:'32px',maxWidth:'420px',margin:'0 16px',boxShadow:'0 0 60px rgba(130,89,239,0.4)'}}>
+            <div style={{display:'flex',alignItems:'center',gap:'12px',marginBottom:'16px'}}>
+              <div style={{width:'40px',height:'40px',borderRadius:'50%',background:'rgba(245,158,11,0.2)',display:'flex',alignItems:'center',justifyContent:'center'}}>
+                <span style={{fontSize:'20px'}}>⏳</span>
               </div>
-              <h3 className="text-white text-lg font-semibold">Heads Up!</h3>
+              <h3 style={{color:'white',fontSize:'18px',fontWeight:600,margin:0}}>Heads Up!</h3>
             </div>
-            <p className="text-gray-300 text-sm leading-relaxed mb-3">
-              Our backend is hosted on <span className="text-[#8259ef] font-medium">Render (free tier)</span> and may go into sleep mode after periods of inactivity.
+            <p style={{color:'#d1d5db',fontSize:'14px',lineHeight:'1.6',marginBottom:'12px'}}>
+              Our backend is hosted on <span style={{color:'#8259ef',fontWeight:500}}>Render (free tier)</span> and may go into sleep mode after periods of inactivity.
             </p>
-            <p className="text-gray-300 text-sm leading-relaxed mb-5">
-              If the data takes a moment to load, please give it <span className="text-amber-400 font-medium">2-3 minutes</span> to wake up, then refresh the page. After that, everything will run smoothly.
+            <p style={{color:'#d1d5db',fontSize:'14px',lineHeight:'1.6',marginBottom:'20px'}}>
+              If the data takes a moment to load, please give it <span style={{color:'#f59e0b',fontWeight:500}}>2-3 minutes</span> to wake up, then refresh the page. After that, everything will run smoothly.
             </p>
             <button
               onClick={() => {
                 setShowRenderNotice(false);
                 sessionStorage.setItem("renderNoticeDismissed", "true");
               }}
-              className="w-full py-3 bg-[#8259ef] hover:bg-[#6d45d9] text-white font-medium rounded-xl transition-colors"
+              style={{width:'100%',padding:'12px',background:'#8259ef',color:'white',fontWeight:500,borderRadius:'12px',border:'none',cursor:'pointer',fontSize:'15px'}}
+              onMouseOver={(e) => (e.currentTarget.style.background = '#6d45d9')}
+              onMouseOut={(e) => (e.currentTarget.style.background = '#8259ef')}
             >
               Got it!
             </button>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
+    <div className="min-h-screen bg-black text-white overflow-hidden">
+      <Navbar />
 
       {/* ======== HERO — Hedera split layout ======== */}
       <section className="hero-gradient relative min-h-[800px] md:min-h-[800px]">
@@ -763,6 +767,7 @@ export default function LandingPage() {
         </div>
       </footer>
     </div>
+    </>
   );
 }
 
