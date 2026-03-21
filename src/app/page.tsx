@@ -45,6 +45,12 @@ export default function LandingPage() {
   const [activities, setActivities] = useState<Activity[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [showRenderNotice, setShowRenderNotice] = useState(false);
+
+  useEffect(() => {
+    const dismissed = sessionStorage.getItem("renderNoticeDismissed");
+    if (!dismissed) setShowRenderNotice(true);
+  }, []);
 
   const [tvl, setTvl] = useState<{ totalStakedHbar: number; stakerCount: number; contractUrl?: string }>({
     totalStakedHbar: 0,
@@ -93,6 +99,35 @@ export default function LandingPage() {
   return (
     <div className="min-h-screen bg-black text-white overflow-hidden">
       <Navbar />
+
+      {/* Render sleep mode notice */}
+      {showRenderNotice && (
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/70 backdrop-blur-sm">
+          <div className="bg-[#1a1a2e] border border-[#8259ef]/30 rounded-2xl p-8 max-w-md mx-4 shadow-2xl">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-10 h-10 rounded-full bg-amber-500/20 flex items-center justify-center">
+                <span className="text-amber-400 text-xl">⏳</span>
+              </div>
+              <h3 className="text-white text-lg font-semibold">Heads Up!</h3>
+            </div>
+            <p className="text-gray-300 text-sm leading-relaxed mb-3">
+              Our backend is hosted on <span className="text-[#8259ef] font-medium">Render (free tier)</span> and may go into sleep mode after periods of inactivity.
+            </p>
+            <p className="text-gray-300 text-sm leading-relaxed mb-5">
+              If the data takes a moment to load, please give it <span className="text-amber-400 font-medium">2-3 minutes</span> to wake up, then refresh the page. After that, everything will run smoothly.
+            </p>
+            <button
+              onClick={() => {
+                setShowRenderNotice(false);
+                sessionStorage.setItem("renderNoticeDismissed", "true");
+              }}
+              className="w-full py-3 bg-[#8259ef] hover:bg-[#6d45d9] text-white font-medium rounded-xl transition-colors"
+            >
+              Got it!
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* ======== HERO — Hedera split layout ======== */}
       <section className="hero-gradient relative min-h-[800px] md:min-h-[800px]">
