@@ -45,11 +45,13 @@ export default function LandingPage() {
   const [activities, setActivities] = useState<Activity[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [showRenderNotice, setShowRenderNotice] = useState(false);
+  const [showRenderNotice, setShowRenderNotice] = useState(true);
+  const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
+    setMounted(true);
     const dismissed = sessionStorage.getItem("renderNoticeDismissed");
-    if (!dismissed) setShowRenderNotice(true);
+    if (dismissed) setShowRenderNotice(false);
   }, []);
 
   const [tvl, setTvl] = useState<{ totalStakedHbar: number; stakerCount: number; contractUrl?: string }>({
@@ -101,8 +103,8 @@ export default function LandingPage() {
       <Navbar />
 
       {/* Render sleep mode notice */}
-      {showRenderNotice && (
-        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/70 backdrop-blur-sm">
+      {mounted && showRenderNotice && (
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/70 backdrop-blur-sm" style={{position:'fixed',top:0,left:0,right:0,bottom:0}}>
           <div className="bg-[#1a1a2e] border border-[#8259ef]/30 rounded-2xl p-8 max-w-md mx-4 shadow-2xl">
             <div className="flex items-center gap-3 mb-4">
               <div className="w-10 h-10 rounded-full bg-amber-500/20 flex items-center justify-center">
